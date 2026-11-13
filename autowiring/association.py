@@ -16,7 +16,7 @@ def _axis(e):
 def candidates(labels,edges):
  """A label is associated with nearest horizontal candidate ONLY. Terminal OCR is optional."""
  wires=[e for e in edges if e['classification']=='candidate_wire' and _axis(e)=='horizontal']
- terminals=[c for c in labels if c['kind'] in ('ocr_text','ocr_terminal','ocr_terminal_candidate') and TERMINAL_RE.fullmatch(str(c['label']).strip())]
+ terminals=[c for c in labels if c['kind'] in ('ocr_text','ocr_terminal_number_candidate') and TERMINAL_RE.fullmatch(str(c['label']).strip())]
  results=[]
  for c in labels:
   if c['kind']!='ocr_fuse_label' or not FUSE_RE.match(str(c['label']).strip()):continue
