@@ -1,25 +1,31 @@
-# AutoWiring — Project Bengkel
+# AutoWiring v0.3.3 — Candidate Circuit Graph (Beta)
 
-Local-first wiring diagram analysis prototype (current development version: **v0.3.3**).
+Local-first extension of v0.3.2. No hosting required.
 
-## Setup (Windows)
+## Windows
 
 ```powershell
+cd D:\dibengkelapp\AutoWiring-v0.3.3
 py -m pip install -r requirements-auto.txt
 py viewer.py
 ```
+Open http://127.0.0.1:8765 (stop prior server first). Tesseract OCR executable must be installed separately and discoverable in PATH.
 
-Open `http://127.0.0.1:8765`. OCR requires a local Tesseract installation.
+## Workflow
+1. Choose Junction Block diagram.
+2. Click **Analisis diagram otomatis** to run OCR + CV.
+3. Click **Build geometry graph**.
+4. Use **Display layers** to toggle connectors, fuses, raw lines, candidate graph, ambiguous crossings.
+5. Select a detected label and click **Highlight nearby segment**. This is **nearest line**, NOT an electrically traced path.
+6. **Export graph JSON** for review.
 
-## Repository workflow
+## Critical limitations
+- Crossings are **never** treated as electrical junctions; all are ambiguous.
+- Label-to-line associations are proximity-based and unverified.
+- No reliable automatic terminal mapping, fuse-rating association, circuit continuity, graph traversal, or troubleshooting.
+- The graph is a geometric index of CV-detected horizontal/vertical segments only.
+- All sample vehicle applicability is unverified. Do not use for electrical repair decisions without qualified verification.
+- Sample images are for local evaluation; confirm source rights before redistributing.
 
-- `main`: working version.
-- Development changes should be proposed in branches / pull requests.
-- Keep local databases, OCR outputs, downloaded source material and temporary files out of Git.
-- Only commit diagram assets when redistribution rights are confirmed.
-
-**Status:** repository initialized. The v0.3.3 application source has **not yet been uploaded**; it must be committed from the local v0.3.3 folder once. See the accompanying setup instructions in chat.
-
-## Data caution
-
-OCR and geometric graph outputs are unverified candidates, **not** electrically validated wiring paths. Do not rely on them alone for vehicle diagnosis.
+## Existing DB
+Use `py viewer.py --db "D:\dibengkelapp\AutoWiring-v0.3.2\output\autowiring.db"` to reuse prior analysis. Backup first. New tables: `graph_runs_v033`, `graph_edges_v033`, `graph_events_v033`, `graph_label_links_v033`. Existing data is not deleted.

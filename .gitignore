@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+output/
+*.db
+.env
+sample_assets/
