@@ -303,6 +303,8 @@ def build(dbpath,diagram_id,image_path,digit_reader=None):
     with sqlite3.connect(dbpath) as db:
         db.row_factory=sqlite3.Row
         db.executescript(SCHEMA)
+        if not db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='enhanced_runs_v0318'").fetchone():
+            raise ValueError('v0.3.18 result not found. Keep previous output/autowiring.db; no older processing was performed.')
         enhanced_id=newest_id(db,'enhanced_runs_v0318',diagram_id)
         if enhanced_id is None:
             raise ValueError('v0.3.18 result not found. Use original output/autowiring.db; DO NOT repeat old pipeline.')
@@ -323,6 +325,12 @@ def build(dbpath,diagram_id,image_path,digit_reader=None):
         circles=[dict(row) for row in db.execute(
             'SELECT * FROM independent_circles_v039 WHERE run_id=?',(independent_id,)
         )] if independent_id else []
+        # Historical path-match circle IDs can belong to OLDER independent OCR
+        # runs. Preserve those coordinates for fuse-index/terminal disambiguation.
+        historical_circles=[dict(row) for row in db.execute("""
+            SELECT c.* FROM independent_circles_v039 c
+            JOIN independent_runs_v039 r ON r.id=c.run_id
+            WHERE r.diagram_id=?""",(diagram_id,))]
         gray=None
         if image_path.is_file():
             try:
@@ -345,7 +353,7 @@ def build(dbpath,diagram_id,image_path,digit_reader=None):
             parent=db.execute('SELECT trace_json FROM trace_items_v0317 WHERE component_id=? AND run_id=?',
                  (a['component_id'],enhanced['trace_run_id'])).fetchone()
             prior=json.loads(parent['trace_json']).get('prior_terminal_suggestions',[]) if parent else []
-            valid_prior,excluded_prior=split_prior_fuse_labels(prior,circles,component)
+            valid_prior,excluded_prior=split_prior_fuse_labels(prior,historical_circles,component)
             filtered_count+=len(excluded_prior)
             endpoint=route.get('endpoint')
             chosen,new_ocr=targeted_unread_circle_ocr(gray,endpoint,circles,digit_reader) if not old_ranking.get('best_geometric_candidate') else (
