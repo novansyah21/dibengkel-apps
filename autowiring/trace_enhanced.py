@@ -166,22 +166,28 @@ def crop_rating_evidence(gray,gap,reader=None,max_attempts=6):
         if reader_unavailable:continue
         # 2 PSM maximum per crop; 4x upscale makes small labels readable.
         variants=_variants(crop,settings,gap,box,gray.size)
-        for variant,upscaled in variants:
-            for psm in (7,8):
-                if attempts>=max_attempts:break
-                attempts+=1
-                try:
-                    words=_read_data(upscaled,psm,reader)
-                    valid=parse_rating_words(words)
-                    safe_raw=[str(w[0])[:60] for w in words if str(w[0]).strip()][:16]
-                    evidence["attempts"].append({"variant":variant,"psm":psm,
-                                                  "raw_tokens":safe_raw,"candidate_ratings":valid})
-                    hits.extend([dict(v,roi=settings[0],variant=variant,psm=psm) for v in valid])
-                except Exception as exc:
-                    evidence["attempts"].append({"variant":variant,"psm":psm,
-                                                  "error":type(exc).__name__})
+        # Two *new* OCR checks per ROI, so compact/above/below are all covered.
+        # If the wire row was cleaned, use it once rather than OCRing the same
+        # patch four times with nearly identical settings.
+        selections=[(variants[0][0],variants[0][1],7)]
+        if len(variants)>1:
+            selections.append((variants[1][0],variants[1][1],8))
+        else:
+            selections.append((variants[0][0],variants[0][1],8))
+        for variant,upscaled,psm in selections:
             if attempts>=max_attempts:break
-        # Do not stop on first read; cross-check against other new ROI.
+            attempts+=1
+            try:
+                words=_read_data(upscaled,psm,reader)
+                valid=parse_rating_words(words)
+                safe_raw=[str(w[0])[:60] for w in words if str(w[0]).strip()][:16]
+                evidence["attempts"].append({"variant":variant,"psm":psm,
+                                              "raw_tokens":safe_raw,"candidate_ratings":valid})
+                hits.extend([dict(v,roi=settings[0],variant=variant,psm=psm) for v in valid])
+            except Exception as exc:
+                evidence["attempts"].append({"variant":variant,"psm":psm,
+                                              "error":type(exc).__name__})
+        # Cross-check ROI families; contradictory ratings remain unresolved.
     unique={h["rating"] for h in hits}
     if len(unique)>1:return None,"conflicting_new_roi_ocr",hits,crops,attempts
     if len(unique)==1:return hits[0]["rating"],"new_localized_rating_candidate_unverified",hits,crops,attempts
@@ -272,7 +278,9 @@ def rank_terminal_evidence(endpoint,circles,prior):
     eligible=[r for r in ranked if r["eligible"]]
     conflict_history=sorted({h["number"] for h in history})
     chosen=None;status="no_current_eligible_terminal"
-    if len(eligible)>1 and eligible[1]["distance"]-eligible[0]["distance"]<.008:
+    if len({r["number"] for r in eligible})>1:
+        status="conflicting_current_terminal_numbers_review_required"
+    elif len(eligible)>1 and eligible[1]["distance"]-eligible[0]["distance"]<.008:
         status="multiple_close_current_terminals"
     elif eligible:
         chosen=eligible[0]
@@ -287,6 +295,7 @@ def rank_terminal_evidence(endpoint,circles,prior):
             "historical_suggestions":history[:15],
             "historical_numbers":conflict_history,
             "conflict":status in ("multiple_close_current_terminals",
+                                 "conflicting_current_terminal_numbers_review_required",
                                  "conflicting_historical_terminal_numbers_review_required"),
             "electrically_verified":False,"connector_ownership_verified":False}
 
