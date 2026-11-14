@@ -3,7 +3,7 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const vm=require("node:vm");
 const fs=require("node:fs");
-function create(){
+function create(offline=false){
   const events={};
   const nodes={};
   function element(id){
@@ -17,8 +17,8 @@ function create(){
   };
   const context={
     document:doc,
-    window:{fetch:()=>new Promise(resolve=>setTimeout(()=>
-      resolve({ok:true,status:200}),85))},
+    window:{fetch:()=>offline?Promise.reject(new Error('offline')):
+      new Promise(resolve=>setTimeout(()=>resolve({ok:true,status:200}),85))},
     setTimeout,clearTimeout,setInterval,clearInterval,
     requestAnimationFrame:fn=>setTimeout(fn,0),
     performance:{now:()=>Date.now()},Promise,
@@ -60,8 +60,7 @@ test("image decode hold keeps loading visible after network resolves",async()=>{
   assert.equal(progress.snapshot().holds,0);
 });
 test("network error reports failure and never silently shows success",async()=>{
-  const {context,progress,nodes}=create();
-  context.window.fetch=()=>Promise.reject(new Error("offline"));
+  const {context,progress,nodes}=create(true);
   await assert.rejects(context.window.fetch("/api/diagram"),/offline/);
   await progress.whenIdle();
   assert.equal(nodes.activityResult.dataset.state,"error");
