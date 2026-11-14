@@ -70,3 +70,26 @@
 .legacy-fold>summary{cursor:pointer;font-size:12px;color:#b7cee4}
 .enhanced-wire{fill:none;stroke:#b87fff;stroke-width:4;stroke-dasharray:9 6;opacity:.83;cursor:pointer;pointer-events:stroke}
 .enhanced-wire-selected{stroke:#f7e4ff!important;stroke-width:7!important;opacity:1}
+
+
+/* v0.3.19: evidence review, no electrical verification is implied. */
+.corrected-trace{border:2px solid #2da9a0;background:#152d38;padding:12px;margin:12px 0;border-radius:12px}
+.corrected-trace h3{margin:0 0 8px;color:#c8fff5}
+.corrected-trace p{font-size:12px;line-height:1.45}
+.corrected-trace .primary-action{background:#067b71!important}
+#correctedInfo{margin:10px 0;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+#correctedList{max-height:600px;overflow-y:auto}
+.corrected-card{padding:10px;border-radius:8px;background:#1a3540;border:1px solid #52878b;margin:8px 0}
+.corrected-card.selected{outline:2px solid #abf8f3}
+.corrected-title{width:100%;text-align:left;white-space:normal;font-weight:700;line-height:1.35}
+.corrected-card details{background:#102b34;border:1px solid #466e77;padding:7px;margin:7px 0;border-radius:7px}
+.corrected-card details summary{cursor:pointer;font-size:12px;line-height:1.3}
+.corrected-card pre{font-size:10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.corrected-evidence{color:#ffdf9e;border-left:3px solid #edb75d;padding:7px;background:#453927}
+.corrected-branches{font-size:11px;line-height:1.5;border-left:3px solid #2dd4bf;padding:8px;background:#133d41;margin:7px 0}
+.corrected-details{font-size:11px;line-height:1.4;color:#b7d4dc;padding:6px 0}
+.corrected-crop{width:100%;max-width:300px;image-rendering:pixelated;background:white;border-radius:5px;margin:7px 0}
+.corrected-branch-stub{stroke:#31deb0;stroke-dasharray:5 5;stroke-width:3;pointer-events:none;opacity:.9}
+.corrected-junction-dot{stroke:#60ffc8;fill:rgba(12,173,116,.30);stroke-width:2;cursor:pointer}
+.corrected-terminal-lead{stroke:#32d3ff;stroke-width:3;fill:rgba(54,174,220,.15);cursor:pointer}
+.corrected-terminal-label{fill:#c2fff3;stroke:#143442;stroke-width:2;paint-order:stroke;font-size:13px;font-weight:700;pointer-events:none}
