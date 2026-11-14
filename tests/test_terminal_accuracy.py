@@ -60,6 +60,8 @@ class AccuracyTests(unittest.TestCase):
    con.execute("""INSERT INTO branch_runs_v0320
      (id,diagram_id,corrected_run_id,input_fingerprint,summary_json)
      VALUES('b','junction_block','c','b-f','{}')""")
+   con.execute("""INSERT INTO independent_runs_v039(id,diagram_id,summary_json)
+     VALUES('old','junction_block','{}')""")
    rows=[
     ("IG1 SIG","main_circle",None,None),
     ("IG1 SIG","branch_circle","ig1_branch","G272"),
@@ -87,7 +89,7 @@ class AccuracyTests(unittest.TestCase):
     con.execute("""INSERT INTO independent_circles_v039
       (id,run_id,x,y,r,ocr_text,ocr_confidence,status,reason)
       VALUES(?,?,?,?,?,?,?,?,?)""",
-      (circle,None,.7 if name!="BACK" else .79,.4 if name!="BACK" else .6,
+      (circle,"old",.7 if name!="BACK" else .79,.4 if name!="BACK" else .6,
        .007,None,0,"ocr_unread","saved circle from v0.3.20"))
    con.commit()
  def test_only_four_cached_circles_and_immutable_prior_run(self):
