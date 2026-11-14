@@ -141,10 +141,10 @@ def _terminal_result(circle,gray,diagram_id,known_terminal=None,reader=None,focu
 def _continuation_candidate(circles,x,y,gray):
     """A bottom-of-page boxed 1 is an off-page continuation, NOT a connector."""
     if y < gray.height*.72:return None
-    matches=sorted((math.hypot(c["x"]*gray.width-x,c["y"]*gray.height-y),c)
+    matches=sorted(((math.hypot(c["x"]*gray.width-x,c["y"]*gray.height-y),c)
                    for c in circles if c.get("ocr_text") and
                    abs(c["x"]*gray.width-x)<25 and
-                   -10<(c["y"]*gray.height-y)<35)
+                   -10<(c["y"]*gray.height-y)<35),key=lambda pair:pair[0])
     if not matches or matches[0][0]>34:return None
     circle=matches[0][1]
     return {"kind":"off_page_continuation_candidate","marker_text":circle["ocr_text"],
