@@ -10,3 +10,6 @@
 .association-selected{stroke:#facc15;stroke-width:5;opacity:.95;fill:none;pointer-events:none}
 
 .circle-evidence{fill:rgba(255,193,7,.12);stroke:#ff7b00;stroke-width:2;pointer-events:none}
+
+.evidence-match{stroke:#24d87a;stroke-width:2;fill:rgba(36,216,122,.12)}
+.evidence-rejected{stroke:#ff8c42;stroke-width:1.5;stroke-dasharray:4 3;fill:transparent;opacity:.7}
