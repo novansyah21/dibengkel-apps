@@ -46,3 +46,27 @@
 .smart-trace-line{fill:none;stroke:#e89b37;stroke-width:4;stroke-dasharray:10 7;opacity:.85;cursor:pointer;pointer-events:stroke}
 .smart-trace-selected{stroke:#fcee73!important;stroke-width:7!important;opacity:1}
 .smart-trace-terminal{stroke:#ef952a;stroke-width:3;fill:rgba(255,180,0,.12);pointer-events:none}
+
+
+/* v0.3.18 — result-first UI. Prior stages stay available but collapsed. */
+.enhanced-trace{border:2px solid #4e9dc5;background:#162c43;border-radius:12px;padding:12px;margin:10px 0 14px}
+.enhanced-trace h3{color:#c8ecff;margin:0 0 7px;line-height:1.3}
+.enhanced-trace p{font-size:12px;line-height:1.5}
+.enhanced-trace .primary-action{background:#126d9d!important}
+#enhancedInfo{padding:8px 0;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+#enhancedList{max-height:540px;overflow-y:auto}
+.enhanced-card{background:#1a334a;border:1px solid #4b657d;border-radius:9px;padding:9px 8px;margin:9px 0;overflow-wrap:anywhere}
+.enhanced-card.selected{border-color:#d2a5ff;box-shadow:inset 0 0 0 1px #d2a5ff}
+.enhanced-heading{width:100%;text-align:left;white-space:normal;font-weight:bold;line-height:1.4}
+.conflict-box{padding:8px;color:#ffe3ab;background:#57402a;border:1px solid #e4a64b;border-radius:7px;line-height:1.4}
+.terminal-alternatives{margin:5px 0}
+.terminal-alternatives div{font-size:11px;padding:3px 0;border-bottom:1px dashed #405a70}
+.enhanced-card details{margin:8px 0;background:#10283b;border-radius:7px;padding:6px}
+.enhanced-card summary{cursor:pointer;font-size:12px;line-height:1.4}
+.enhanced-roi{padding:7px 3px;border-top:1px solid #3a6176}
+.enhanced-roi img{max-width:100%;background:white;border-radius:4px}
+.ocr-debug{white-space:pre-wrap;overflow-wrap:anywhere;font-size:10px;color:#d2dce7;line-height:1.3}
+.legacy-fold{border:1px solid #46637d;border-radius:8px;padding:8px;margin:8px 0}
+.legacy-fold>summary{cursor:pointer;font-size:12px;color:#b7cee4}
+.enhanced-wire{fill:none;stroke:#b87fff;stroke-width:4;stroke-dasharray:9 6;opacity:.83;cursor:pointer;pointer-events:stroke}
+.enhanced-wire-selected{stroke:#f7e4ff!important;stroke-width:7!important;opacity:1}
