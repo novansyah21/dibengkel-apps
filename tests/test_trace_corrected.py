@@ -122,7 +122,7 @@ class CorrectedTraceTests(unittest.TestCase):
             from autowiring.trace_corrected import SCHEMA
             with sqlite3.connect(db) as con:
                 con.executescript(SCHEMA)
-            with self.assertRaisesRegex(sqlite3.Error,'enhanced_runs_v0318'):
+            with self.assertRaisesRegex(ValueError,'v0.3.18 result not found'):
                 build(db,'junction_block',Path(temp)/'absent.png')
 
 if __name__=='__main__': unittest.main()
