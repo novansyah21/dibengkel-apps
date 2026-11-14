@@ -28,6 +28,20 @@ Buka **http://127.0.0.1:8765**, kemudian tekan **Ctrl + Shift + R** sekali.
 
 Semua tombol, termasuk tombol analisis lama, tetap menampilkan **spinner/loading di atas gambar**, penghitung request yang selesai/belum, waktu berjalan, dan notifikasi selesai/gagal. **Tidak ada persentase palsu.**
 
+## MVP dapat digunakan untuk diagram kendaraan lain — mode manual
+
+Untuk selain Junction Block contoh, **tidak ada klaim pengenalan diagram secara otomatis**. Tetapi bengkel tetap dapat memanfaatkannya untuk penelusuran visual berbasis anotasi:
+
+1. Klik **＋ Import wiring diagram (PNG/JPEG)** pada bagian Diagram.
+2. Pilih gambar lokal maksimum **8 MB, 15 megapiksel**. Isi judul dan nama/model kendaraan.
+3. AutoWiring menyimpan gambar dalam format PNG bersih ke **sample_assets**, mendaftarkannya ke SQLite, dan membuka gambar baru tanpa menghapus diagram sebelumnya. Server hanya menerima nama file image yang sudah terdaftar; file path tidak boleh dimasukkan pengguna.
+4. Gunakan **+ Anotasi**, **+ Jalur**, **Terminal**, dan **Hubungkan jalur** untuk memetakan kandidat jalur secara manual. Hasil tetap bertanda **needs_review**.
+5. Mesin pemetaan otomatis enam fuse sengaja **dinonaktifkan** untuk gambar baru, karena source-specific anchors belum valid pada kendaraan lain.
+
+Ini menjadikan aplikasi **MVP diagram viewer + manual wiring tracer + review report untuk sampel**, bukan klaim multi-vehicle auto interpreter. Source image dan database user tersimpan **lokal** dan tidak diunggah ke layanan luar oleh fitur import ini.
+
+**Perbaikan penting v0.3.22:** permintaan `/loading.js` sekarang dilayani oleh local server (pada v0.3.21 script loading sempat tidak masuk static route). Loading spinner kini tidak hanya ada dalam kode frontend, tapi dapat dimuat dan diuji melalui HTTP lokal.
+
 ## Cakupan MVP yang faktual
 
 | Kemampuan | Status |
