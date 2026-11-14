@@ -169,13 +169,13 @@ class MVPReviewTests(unittest.TestCase):
             preview=mvp_review._previews(img,[.603,.328])
             self.assertTrue(preview["original_png_base64"])
             self.assertTrue(preview["experimental_circle_border_suppression_png_base64"])
-            self.assertIn("NOT",preview["warning"])
+            self.assertIn("does not yield an OCR result",preview["warning"])
 
     def test_missing_previous_results_never_triggers_recomputation(self):
         with tempfile.TemporaryDirectory() as root:
             db=Path(root)/"empty.db"
             with sqlite3.connect(db) as conn:setup(conn)
-            with self.assertRaisesRegex(ValueError,"same output/autowiring.db"):
+            with self.assertRaisesRegex(ValueError,"SAME output/autowiring.db"):
                 mvp_review.assemble(db,"junction_block")
 
 if __name__=="__main__":
