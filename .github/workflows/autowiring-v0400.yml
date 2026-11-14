@@ -59,7 +59,7 @@ jobs:
                           'savedVehicleProfile','diagnosisSymptom','diagnosisSystem',
                           'runElectricalDiagnosis','buildUniversalScan','diagramLoading'):
               assert 'id="'+selector+'"' in ui,selector
-              assert selector in js,selector
+              assert selector in (Path('web/loading.js').read_text() if selector=='diagramLoading' else js),selector
           for route in ('/api/vehicle-catalog','/api/vehicle-profile',
                         '/api/diagram-vehicle-bind','/api/diagnose',
                         '/api/diagnosis-options','/api/universal-scan-build'):
