@@ -29,6 +29,7 @@ from autowiring.branch_tracing import SCHEMA as BRANCH_SCHEMA,build as build_bra
 from autowiring.terminal_accuracy import SCHEMA as ACCURACY_SCHEMA,build as build_terminal_accuracy,latest as latest_terminal_accuracy,review as review_terminal_accuracy
 from autowiring.mvp_review import SCHEMA as MVP_SCHEMA,assemble as mvp_report,snapshot as mvp_snapshot,snapshots as mvp_snapshots
 from autowiring.diagram_upload import upload as upload_diagram
+from autowiring.pdf_library import (SCHEMA as PDF_SCHEMA,init as init_pdf_library,sources as pdf_sources,documents as pdf_documents)
 from autowiring.vehicle_catalog import (SCHEMA as VEHICLE_SCHEMA,seed as seed_vehicles,catalog as vehicle_catalog,
     add_model as add_vehicle_model,save_profile as save_vehicle_profile,
     profiles as vehicle_profiles,binding as vehicle_binding,bind as bind_vehicle)
@@ -48,11 +49,15 @@ CREATE TABLE IF NOT EXISTS viewer_circuit_links(id TEXT PRIMARY KEY,diagram_id T
 SEEDS=[('junction_block','Junction Block — fuse and terminal map','c9954639ad0fb133cedb.png',1136,1598),('abbreviations','Abbreviation reference','17ba65f18296c7320c58.png',640,316),('bcm_wiring','BCM internal wiring / harness','a6c3c83161c162401c88.png',1248,1512)]
 
 def setup(db):
- db.executescript(SCHEMA + AUTO_SCHEMA + GRAPH_SCHEMA + SEG_SCHEMA + ASSOC_SCHEMA + TERMINAL_SCHEMA + CIRCLE_SCHEMA + EVIDENCE_SCHEMA + INDEPENDENT_SCHEMA + PATHMATCH_SCHEMA + FUSE_AUDIT_SCHEMA + LOCAL_OCR_SCHEMA + DIAG_SCHEMA + CONT_SCHEMA + TARGET_SCHEMA + VISUAL_SCHEMA + COMPONENT_SCHEMA + TRACE_SCHEMA + ENHANCED_SCHEMA + CORRECTED_SCHEMA + BRANCH_SCHEMA + ACCURACY_SCHEMA + MVP_SCHEMA + VEHICLE_SCHEMA + DIAGNOSE_SCHEMA + UNIVERSAL_SCHEMA)
+ db.executescript(SCHEMA + AUTO_SCHEMA + GRAPH_SCHEMA + SEG_SCHEMA + ASSOC_SCHEMA + TERMINAL_SCHEMA + CIRCLE_SCHEMA + EVIDENCE_SCHEMA + INDEPENDENT_SCHEMA + PATHMATCH_SCHEMA + FUSE_AUDIT_SCHEMA + LOCAL_OCR_SCHEMA + DIAG_SCHEMA + CONT_SCHEMA + TARGET_SCHEMA + VISUAL_SCHEMA + COMPONENT_SCHEMA + TRACE_SCHEMA + ENHANCED_SCHEMA + CORRECTED_SCHEMA + BRANCH_SCHEMA + ACCURACY_SCHEMA + MVP_SCHEMA + VEHICLE_SCHEMA + DIAGNOSE_SCHEMA + UNIVERSAL_SCHEMA + PDF_SCHEMA)
  for id,title,file,w,h in SEEDS:
   db.execute('INSERT OR IGNORE INTO viewer_diagrams(id,title,image_file,width,height,source_url,vehicle) VALUES(?,?,?,?,?,?,?)',(id,title,file,w,h,'https://charm.li/','Suzuki SX4 2007 2WD L4-2.0L (source context, unverified)'))
  db.commit()
  seed_vehicles(db)
+ # Source registry only; no network downloads during startup.
+ for id,name,url,kind,notes,license_status in __import__('autowiring.pdf_library',fromlist=['SOURCES']).SOURCES:
+  db.execute("INSERT OR IGNORE INTO pdf_source_catalog_v041 (id,name,homepage,source_kind,notes,license_status) VALUES(?,?,?,?,?,?)",(id,name,url,kind,notes,license_status))
+ db.commit()
 
 def validate_point(x):
  x=float(x)
@@ -71,6 +76,8 @@ def run(port,dbpath):
     return [dict(x) for x in db.execute(sql,args)]
   def do_GET(self):
    url=urlparse(self.path);p=url.path
+   if p=='/api/pdf-sources':return self.send(200,pdf_sources(dbpath))
+   if p=='/api/pdf-library':return self.send(200,pdf_documents(dbpath))
    if p=='/api/vehicle-catalog':
     return self.send(200,vehicle_catalog(dbpath))
    if p=='/api/vehicle-profiles':
@@ -184,7 +191,13 @@ def run(port,dbpath):
    if p=='/api/circuit-links':
     d=parse_qs(url.query).get('diagram',[''])[0]
     return self.send(200,self.query('SELECT l.*,a.label AS annotation_label,p.label AS path_label,t.terminal_number FROM viewer_circuit_links l JOIN viewer_annotations a ON a.id=l.annotation_id JOIN viewer_paths p ON p.id=l.path_id LEFT JOIN viewer_terminals t ON t.id=l.terminal_id WHERE l.diagram_id=? ORDER BY p.label,a.label',(d,)))
-   if p.startswith('/images/'):
+   if p.startswith('/pdf-library/'):
+    name=p.removeprefix('/pdf-library/')
+    if (not re.fullmatch(r'[a-f0-9]{64}\.pdf',name)
+        or not self.query('SELECT id FROM pdf_library_v041 WHERE file_name=?',(name,))):
+     return self.send(404,{'error':'not found'})
+    file=ROOT/'output'/'pdf_library'/name
+   elif p.startswith('/images/'):
     name=p.removeprefix('/images/')
     # Only serve sanitized basenames registered in this local app database.
     # This includes preinstalled sample diagrams AND user-uploaded PNGs.

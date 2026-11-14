@@ -22,7 +22,7 @@ $('viewport').onpointerdown=e=>{if(e.button!==0)return;if(S.mode==='pan'){S.drag
 $('overlay').addEventListener('click',e=>{if(S.mode==='pan'||e.target!==$('overlay'))return;const p=point(e);if(S.mode==='annotation'){S.point=p;$('editor').showModal()}else{S.pending.push(p);draw()}});
 $('close').onclick=()=>$('editor').close();$('editForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await api('/api/annotations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({diagram_id:S.diagram.id,kind:f.get('kind'),label:f.get('label'),notes:f.get('notes'),x:S.point[0],y:S.point[1],w:.035,h:.025})});$('editor').close();e.target.reset();await refresh()}catch(err){alert(err.message)}};
 $('finish').onclick=async()=>{if(S.pending.length<2)return alert('Minimal dua titik');const label=prompt('Nama jalur (manual):');if(!label)return;try{await api('/api/paths',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({diagram_id:S.diagram.id,label,points:S.pending})});S.pending=[];await refresh()}catch(err){alert(err.message)}};$('cancel').onclick=()=>{S.pending=[];draw()};
-(async()=>{await initVehicleCatalog();await initDiagnosisOptions();S.diagrams=await api('/api/diagrams');for(const d of S.diagrams){const o=document.createElement('option');o.value=d.id;o.textContent=d.title;$('diagram').append(o)}$('diagram').value='junction_block';await change()})().catch(e=>{$('status').textContent=e.message});
+(async()=>{await refreshPdfLibrary();await initVehicleCatalog();await initDiagnosisOptions();S.diagrams=await api('/api/diagrams');for(const d of S.diagrams){const o=document.createElement('option');o.value=d.id;o.textContent=d.title;$('diagram').append(o)}$('diagram').value='junction_block';await change()})().catch(e=>{$('status').textContent=e.message});
 
 function options(el,items,fmt){el.replaceChildren();for(const item of items){const o=document.createElement('option');o.value=item.id;o.textContent=fmt(item);el.append(o)}}
 function mappingRow(container,title,detail,type,obj){const row=document.createElement('div');row.className='item';const b=document.createElement('button');b.textContent=title;b.title=detail;b.onclick=()=>{inspect(type,{...obj,label:title,notes:detail});if(type==='circuit-links'){const p=S.paths.find(x=>x.id===obj.path_id);if(p){$('search').value='';draw();const el=[...$('overlay').querySelectorAll('polyline')][S.paths.indexOf(p)];if(el){el.classList.add('selected-wire');setTimeout(()=>el.classList.remove('selected-wire'),3500)}}}};const del=document.createElement('button');del.className='delete';del.textContent='×';del.onclick=async()=>{if(!confirm('Hapus mapping ini?'))return;try{await api(`/api/${type}/${obj.id}`,{method:'DELETE'});await refresh()}catch(e){alert(e.message)}};row.append(b,del);container.append(row)}
@@ -1274,3 +1274,48 @@ $('runElectricalDiagnosis').onclick=async()=>{
    window.ActionProgress?.reportError(error.message);
  }finally{b.disabled=false;}
 };
+
+
+// v0.4.1: read-only PDF reference directory. Network discovery and importing
+// are explicit CLI operations; no unconsented bulk scraping in the browser.
+async function refreshPdfLibrary(){
+ const status=$('pdfLibraryStatus');
+ status.textContent='Membaca daftar referensi dan PDF lokal...';
+ try{
+   const [sources,docs]=await Promise.all([
+      api('/api/pdf-sources'),api('/api/pdf-library')]);
+   const src=$('pdfSourceList');src.replaceChildren();
+   for(const item of sources){
+      const row=document.createElement('p');row.className='muted';
+      const a=document.createElement('a');a.href=item.homepage;
+      a.target='_blank';a.rel='noopener noreferrer';
+      a.textContent=item.name;
+      const info=document.createElement('span');
+      info.textContent=' • '+item.source_kind+
+        ' • izin: '+item.license_status+' • '+item.notes;
+      row.append(a,info);src.append(row);
+   }
+   const lib=$('pdfDocumentList');lib.replaceChildren();
+   if(!docs.length){
+      const empty=document.createElement('p');empty.className='muted';
+      empty.textContent='Belum ada PDF yang diimpor. Referensi di atas tidak otomatis disalin.';
+      lib.append(empty);
+   }
+   for(const item of docs){
+      const row=document.createElement('p');row.className='muted';
+      const a=document.createElement('a');
+      a.href='/pdf-library/'+encodeURIComponent(item.file_name);
+      a.target='_blank';a.rel='noopener noreferrer';
+      a.textContent='📄 '+item.title;
+      const meta=document.createElement('span');
+      meta.textContent=' • '+item.vehicle+' • '+(item.bytes/1048576).toFixed(2)+
+         ' MB • '+item.license_basis;
+      row.append(a,meta);lib.append(row);
+   }
+   status.textContent=sources.length+' sumber terdaftar, '+
+      docs.length+' PDF lokal. Tidak ada proses scraping otomatis.';
+ }catch(error){
+   status.textContent='Gagal membaca PDF library: '+error.message;
+ }
+}
+$('refreshPdfLibrary').onclick=refreshPdfLibrary;
