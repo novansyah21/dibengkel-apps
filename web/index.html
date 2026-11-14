@@ -1,8 +1,61 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AutoWiring MVP 0.1 (v0.3.22)</title><link rel="stylesheet" href="/style.css?v=0322"></head><body><header><strong>⚡ AutoWiring</strong><span>v0.3.22 • Assisted Review MVP</span><span class="badge">UNVERIFIED VEHICLE APPLICABILITY</span></header><div class="layout"><aside><h3>Diagram</h3><select id="diagram"></select>
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AutoWiring v0.4.0 — Multi-Vehicle Diagnostic Beta</title><link rel="stylesheet" href="/style.css?v=0400"></head><body><header><strong>⚡ AutoWiring</strong><span>v0.4.0 • Multi-Vehicle / Diagnosis Beta</span><span class="badge">UNVERIFIED VEHICLE APPLICABILITY</span></header><div class="layout"><aside><h3>Diagram</h3><select id="diagram"></select>
+<section class="vehicle-select-panel">
+ <h3>🚗 Identitas Kendaraan</h3>
+ <p class="muted">Merk → Jenis/Tipe mobil → Nama mobil/model → Varian → Tahun. Pilihan awal dapat ditambah sendiri; tidak menjamin kecocokan diagram.</p>
+ <label>Merk mobil<select id="vehicleBrand"><option value="">Pilih merk</option></select></label>
+ <label>Jenis mobil<select id="vehicleBodyType"><option value="">Pilih jenis bodi</option></select></label>
+ <label>Nama mobil / model<select id="vehicleModel"><option value="">Pilih model</option></select></label>
+ <label>Tipe / varian (opsional)<input id="vehicleVariant" placeholder="Contoh: GL AT 1.4 / G CVT"></label>
+ <label>Tahun pembuatan<input id="vehicleYear" type="number" min="1950" max="2035" value="2024"></label>
+ <label>Jenis penggerak<select id="vehiclePowertrain"><option value="unknown">Belum diketahui</option>
+   <option value="gasoline">Bensin</option><option value="diesel">Diesel</option>
+   <option value="hybrid">Hybrid</option><option value="plug_in_hybrid">PHEV</option>
+   <option value="electric">Listrik / EV</option></select></label>
+ <button id="saveVehicle" type="button" class="primary-action">✓ Simpan kendaraan &amp; hubungkan ke diagram</button>
+ <label>Kendaraan yang pernah disimpan<select id="savedVehicleProfile"><option value="">Belum dipilih</option></select></label>
+ <button id="bindSavedVehicle" type="button">Hubungkan kendaraan tersimpan ke diagram</button>
+ <details class="vehicle-add-custom"><summary>＋ Merk / nama model belum tersedia?</summary>
+  <label>Merk baru / lama<input id="customVehicleBrand" placeholder="Contoh: Proton"></label>
+  <label>Nama model baru<input id="customVehicleModel" placeholder="Contoh: Saga"></label>
+  <label>Jenis mobil<select id="customVehicleBody"></select></label>
+  <button id="addCustomVehicleModel" type="button">Tambah ke daftar lokal</button>
+ </details>
+ <div id="vehicleInfo" class="muted" role="status" aria-live="polite">Memuat katalog kendaraan...</div>
+</section>
 <button id="uploadDiagram" type="button" class="upload-diagram-button">＋ Import wiring diagram (PNG/JPEG)</button>
 <input id="uploadDiagramFile" type="file" accept="image/png,image/jpeg" hidden>
 <p id="uploadInfo" class="muted">Diagram baru = manual visual mapping; enam-fuse auto-analysis hanya berlaku pada sampel Junction Block.</p>
-<h3>Mode</h3><div class="buttons"><button data-mode="pan" class="active">Pan / Zoom</button><button data-mode="annotation">+ Anotasi</button><button data-mode="path">+ Jalur</button></div><p class="muted">Anotasi: klik titik gambar. Jalur: klik beberapa titik, lalu tekan Selesai.</p><button id="finish" hidden>Selesai jalur</button><button id="cancel" hidden>Batal</button><section class="mvp-release-panel">
+<h3>Mode</h3><div class="buttons"><button data-mode="pan" class="active">Pan / Zoom</button><button data-mode="annotation">+ Anotasi</button><button data-mode="path">+ Jalur</button></div><p class="muted">Anotasi: klik titik gambar. Jalur: klik beberapa titik, lalu tekan Selesai.</p><button id="finish" hidden>Selesai jalur</button><button id="cancel" hidden>Batal</button><section class="universal-scan-panel">
+<h3>🔍 Pembacaan Diagram Universal (Beta)</h3>
+<p class="muted">OCR label dan deteksi garis dari gambar <b>merk apa pun</b>. Hanya usulan elemen visual, bukan pemahaman seluruh sirkuit. Jalur tidak otomatis dihubungkan.</p>
+<button id="buildUniversalScan" type="button" class="primary-action">▶ Analisis gambar aktif — OCR &amp; kandidat kabel</button>
+<div id="universalScanInfo" class="muted" role="status" aria-live="polite">Belum ada scan. Hasil berdasarkan gambar yang dipilih.</div>
+<div id="universalScanResults"></div>
+</section>
+<section class="electrical-diagnosis-panel">
+<h3>🧰 Pemeriksaan Gangguan Listrik — Diagnosis Awal (Beta)</h3>
+<p class="muted">Menghasilkan <b>hipotesis bersyarat</b> dari keluhan dan pengukuran 12V yang lu masukkan. Tidak menentukan kerusakan atau koneksi berdasarkan OCR/diagram semata.</p>
+<label>Keluhan / gejala<select id="diagnosisSymptom"></select></label>
+<label>Sistem kelistrikan<select id="diagnosisSystem"></select></label>
+<details class="diagnosis-measure"><summary>＋ Input pengukuran 12V (opsional, bila sudah diukur dengan aman)</summary>
+<label>Tegangan aki mesin mati (V)<input id="diagBattery" type="number" min="0" max="60" step=".01" placeholder="Belum diukur"></label>
+<label>Input fuse (V)<input id="diagFuseIn" type="number" min="0" max="60" step=".01" placeholder="Belum diukur"></label>
+<label>Output fuse (V)<input id="diagFuseOut" type="number" min="0" max="60" step=".01" placeholder="Belum diukur"></label>
+<label>Suplai pada beban (V)<input id="diagLoadFeed" type="number" min="0" max="60" step=".01" placeholder="Belum diukur"></label>
+<label>Ground voltage drop (V)<input id="diagGroundDrop" type="number" min="0" max="20" step=".01" placeholder="Belum diukur"></label>
+<label>Kondisi fuse<select id="diagFuseContinuity">
+ <option value="unknown">Belum diketahui</option>
+ <option value="intact">Diuji utuh</option>
+ <option value="open">Diuji putus</option>
+ <option value="not_tested">Tidak diuji</option></select></label>
+<label><input id="diagLoadActive" type="checkbox"> Ground drop diuji saat beban aktif</label>
+</details>
+<label>Catatan gejala<textarea id="diagNotes" maxlength="800" placeholder="Kapan masalah muncul, kondisi kendaraan, DTC jika ada"></textarea></label>
+<button id="runElectricalDiagnosis" type="button" class="primary-action">▶ Analisis kemungkinan penyebab &amp; pemeriksaan berikutnya</button>
+<div id="diagnosisInfo" class="muted" role="status" aria-live="polite">Memerlukan gejala dan bukti. Sistem airbag/HV dibatasi untuk teknisi.</div>
+<div id="diagnosisResult"></div>
+<p class="diagnosis-warning">⚠ Jangan bypass sekering, menaikkan rating, atau mengukur konektor airbag / sistem tegangan tinggi. Hasil bukan vonis diagnosis.</p>
+</section><details class="legacy-fold"><summary>🛠 Review enam-fuse khusus Suzuki SX4 (MVP sebelumnya)</summary><section class="mvp-release-panel">
 <h3>🛠 AutoWiring MVP 0.1 — Assisted Wiring Review</h3>
 <p class="muted">Gunakan hasil enam fuse dan jalur bercabang yang sudah tersimpan. Ini MVP untuk <b>membaca &amp; mereview diagram contoh</b>, bukan diagnosis listrik otomatis. Tidak ada proses OCR atau tracing lama yang diulang.</p>
 <button id="loadMvp" class="primary-action">▶ Load saved six-fuse MVP report</button>
@@ -14,7 +67,7 @@
 <div class="mvp-actions"><button id="saveMvpSnapshot" disabled>Save audit snapshot</button>
 <button id="exportMvpJson" disabled>Export MVP review JSON</button><button id="exportMvpCsv" disabled>Export wiring checklist CSV</button></div>
 <p class="mvp-safety">⚠ <b>0 electrically verified connections.</b> Nomor hasil OCR dan konfirmasi visual bukan bukti pinout atau kontinuitas listrik. Jangan gunakan laporan ini sebagai dasar diagnosis tanpa pemeriksaan.</p>
-</section><details class="legacy-fold"><summary>🔎 OCR v0.3.21 &amp; review lanjutan (opsional)</summary><section class="terminal-accuracy-panel">
+</section></details><details class="legacy-fold"><summary>🔎 OCR v0.3.21 &amp; review lanjutan (opsional)</summary><section class="terminal-accuracy-panel">
  <h3>🔎 AutoWiring v0.3.21 — Terminal OCR Accuracy</h3>
  <p class="muted">Analisis hanya 4 lingkaran bermasalah dari hasil v0.3.20 yang sudah tersimpan. Tidak mengulang deteksi fuse, jalur, circle, maupun OCR lama. Nomor OCR dan referensi visual dipisahkan agar kesalahan tidak disamarkan.</p>
  <button id="buildTerminalAccuracy" class="primary-action">▶ Refine 4 terminal OCR candidates (v0.3.21)</button>
@@ -39,4 +92,4 @@
   <div class="loading-indeterminate" aria-hidden="true"><span></span></div>
   <small><span id="loadingElapsed">0.0 detik</span> • Indikator berjalan, bukan persentase palsu.</small>
  </div>
-</div></main><section class="details"><h3>Inspector</h3><div id="inspector" class="muted">Pilih anotasi, terminal, atau jalur.</div><hr><p class="muted">Semua data anotasi berstatus <b>needs_review</b>. Mapping dibuat manual, dan tetap needs_review sampai diperiksa terhadap dokumen sumber.</p><p class="muted">Sampel gambar hanya untuk review lokal. Periksa izin sebelum distribusi.</p></section></div><dialog id="editor"><form id="editForm"><h3>Tambah anotasi</h3><label>Jenis<select name="kind"><option>component</option><option>connector</option><option>fuse</option><option>terminal</option><option>note</option></select></label><label>Label<input name="label" required maxlength="150" placeholder="E325 terminal 5"/></label><label>Catatan<textarea name="notes"></textarea></label><menu><button type="button" id="close">Batal</button><button type="submit">Simpan</button></menu></form></dialog><dialog id="terminalDialog"><form id="terminalForm"><h3>Tambah terminal connector</h3><label>Connector<select name="connector_annotation_id" id="terminalConnector"></select></label><label>Nomor terminal<input name="terminal_number" required maxlength="30" placeholder="5"/></label><label>Nama sinyal (opsional)<input name="signal_name" maxlength="150" placeholder="IG COIL"/></label><label>Catatan<textarea name="notes"></textarea></label><menu><button type="button" onclick="document.getElementById('terminalDialog').close()">Batal</button><button>Simpan</button></menu></form></dialog><dialog id="linkDialog"><form id="linkForm"><h3>Hubungkan jalur ke anotasi</h3><label>Jalur<select name="path_id" id="linkPath"></select></label><label>Connector / komponen<select name="annotation_id" id="linkAnnotation"></select></label><label>Terminal (opsional)<select name="terminal_id" id="linkTerminal"></select></label><label>Catatan<textarea name="notes"></textarea></label><p class="muted">Hanya menghubungkan objek yang telah lu review secara manual; tidak menyatakan kontinuitas listrik terverifikasi.</p><menu><button type="button" onclick="document.getElementById('linkDialog').close()">Batal</button><button>Simpan</button></menu></form></dialog><script src="/loading.js?v=0322"></script><script src="/app.js?v=0322"></script></body></html>
+</div></main><section class="details"><h3>Inspector</h3><div id="inspector" class="muted">Pilih anotasi, terminal, atau jalur.</div><hr><p class="muted">Semua data anotasi berstatus <b>needs_review</b>. Mapping dibuat manual, dan tetap needs_review sampai diperiksa terhadap dokumen sumber.</p><p class="muted">Sampel gambar hanya untuk review lokal. Periksa izin sebelum distribusi.</p></section></div><dialog id="editor"><form id="editForm"><h3>Tambah anotasi</h3><label>Jenis<select name="kind"><option>component</option><option>connector</option><option>fuse</option><option>terminal</option><option>note</option></select></label><label>Label<input name="label" required maxlength="150" placeholder="E325 terminal 5"/></label><label>Catatan<textarea name="notes"></textarea></label><menu><button type="button" id="close">Batal</button><button type="submit">Simpan</button></menu></form></dialog><dialog id="terminalDialog"><form id="terminalForm"><h3>Tambah terminal connector</h3><label>Connector<select name="connector_annotation_id" id="terminalConnector"></select></label><label>Nomor terminal<input name="terminal_number" required maxlength="30" placeholder="5"/></label><label>Nama sinyal (opsional)<input name="signal_name" maxlength="150" placeholder="IG COIL"/></label><label>Catatan<textarea name="notes"></textarea></label><menu><button type="button" onclick="document.getElementById('terminalDialog').close()">Batal</button><button>Simpan</button></menu></form></dialog><dialog id="linkDialog"><form id="linkForm"><h3>Hubungkan jalur ke anotasi</h3><label>Jalur<select name="path_id" id="linkPath"></select></label><label>Connector / komponen<select name="annotation_id" id="linkAnnotation"></select></label><label>Terminal (opsional)<select name="terminal_id" id="linkTerminal"></select></label><label>Catatan<textarea name="notes"></textarea></label><p class="muted">Hanya menghubungkan objek yang telah lu review secara manual; tidak menyatakan kontinuitas listrik terverifikasi.</p><menu><button type="button" onclick="document.getElementById('linkDialog').close()">Batal</button><button>Simpan</button></menu></form></dialog><script src="/loading.js?v=0400"></script><script src="/app.js?v=0400"></script></body></html>

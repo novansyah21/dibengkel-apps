@@ -1,0 +1,68 @@
+name: AutoWiring v0.4.0 multi-vehicle / electrical triage
+on:
+  push:
+    branches: [feature/v0.4.0-multivehicle-diagnostics]
+  pull_request:
+    branches: [feature/v0.3.22-mvp]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install basic image dependency, no ML model downloads
+        run: python -m pip install "Pillow>=10,<13"
+      - name: Python and JavaScript syntax
+        run: |
+          python -m compileall -q viewer.py autowiring tests
+          node --check web/app.js
+          node --check web/loading.js
+      - name: Previous analysis, cache and MVP tests
+        run: |
+          python -m unittest discover -s tests -p "test_*trac*.py" -v
+          python -m unittest discover -s tests -p "test_terminal_accuracy.py" -v
+          python -m unittest discover -s tests -p "test_mvp_review.py" -v
+          python -m unittest discover -s tests -p "test_diagram_upload.py" -v
+          node --test tests/test_loading_progress.cjs
+      - name: Brand to type to model catalog and restricted diagnosis rules
+        run: python -m unittest discover -s tests -p "test_vehicle_diagnosis.py" -v
+      - name: Generic OCR image proposal cache
+        run: python -m unittest discover -s tests -p "test_universal_scan.py" -v
+      - name: Multi-vehicle local HTTP API smoke
+        run: python -m unittest discover -s tests -p "test_vehicle_api_http.py" -v
+      - name: UI wiring and SQLite compatibility
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import sqlite3
+          from viewer import setup
+          with sqlite3.connect(':memory:') as db:
+              setup(db)
+              tables={x[0] for x in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+              needed={'vehicle_brands_v0400','vehicle_models_v0400',
+                      'vehicle_profiles_v0400','diagram_vehicle_v0400',
+                      'diagnosis_cases_v0400','universal_scan_runs_v0400',
+                      'mvp_snapshots_v0322','terminal_accuracy_runs_v0321'}
+              assert needed<=tables,needed-tables
+              assert db.execute('SELECT count(*) FROM vehicle_brands_v0400').fetchone()[0]>=20
+          ui=Path('web/index.html').read_text()
+          js=Path('web/app.js').read_text()
+          server=Path('viewer.py').read_text()
+          for selector in ('vehicleBrand','vehicleBodyType','vehicleModel',
+                          'vehicleVariant','vehicleYear','saveVehicle',
+                          'savedVehicleProfile','diagnosisSymptom','diagnosisSystem',
+                          'runElectricalDiagnosis','buildUniversalScan','diagramLoading'):
+              assert 'id="'+selector+'"' in ui,selector
+              assert selector in (Path('web/loading.js').read_text() if selector=='diagramLoading' else js),selector
+          for route in ('/api/vehicle-catalog','/api/vehicle-profile',
+                        '/api/diagram-vehicle-bind','/api/diagnose',
+                        '/api/diagnosis-options','/api/universal-scan-build'):
+              assert route in server,route
+          print('PASS: v0.4.0 schema, brand/type/model UI, and 12V triage endpoints')
+          PY

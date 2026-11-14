@@ -197,3 +197,47 @@ main{position:relative}
 .mvp-main-line{stroke:#52e8d5;stroke-width:3.5;stroke-dasharray:9 5;fill:none;opacity:.9;cursor:pointer;pointer-events:stroke}
 .mvp-branch-line{stroke:#f0b45f;stroke-width:3;stroke-dasharray:5 5;fill:none;opacity:.85;cursor:pointer;pointer-events:stroke}
 .mvp-selected-path{stroke:#ffffa1!important;stroke-width:6!important;opacity:1!important}
+
+
+/* v0.4.0 — multi-vehicle intake and conditional diagnosis (not auto fault verdict). */
+.vehicle-select-panel,.universal-scan-panel,.electrical-diagnosis-panel{
+  background:#142f46;border:2px solid #3c91b3;border-radius:12px;
+  padding:12px;margin:12px 0 16px}
+.vehicle-select-panel{border-color:#62a9d6}
+.universal-scan-panel{border-color:#7bc5b8}
+.electrical-diagnosis-panel{border-color:#dfa85d}
+.vehicle-select-panel h3,.universal-scan-panel h3,.electrical-diagnosis-panel h3{
+  margin:0 0 10px;color:#d9f4ff;font-size:15px;line-height:1.35}
+.vehicle-select-panel label,.electrical-diagnosis-panel label{
+  display:flex;flex-direction:column;gap:4px;margin:9px 0;
+  font-size:12px;line-height:1.4;color:#d1e6f7}
+.vehicle-select-panel select,.vehicle-select-panel input,
+.electrical-diagnosis-panel select,.electrical-diagnosis-panel input,
+.electrical-diagnosis-panel textarea{min-width:0;width:100%;box-sizing:border-box}
+.vehicle-select-panel button,.universal-scan-panel button,
+.electrical-diagnosis-panel button{white-space:normal}
+.vehicle-select-panel .primary-action{background:#23749a!important;min-height:46px}
+.universal-scan-panel .primary-action{background:#197768!important;min-height:44px}
+.electrical-diagnosis-panel .primary-action{background:#9c662f!important;min-height:44px}
+.vehicle-select-panel .muted,.universal-scan-panel .muted,
+.electrical-diagnosis-panel .muted{font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+#vehicleInfo,#universalScanInfo,#diagnosisInfo{font-size:11px;line-height:1.5;
+  padding:8px;margin:9px 0;border:1px solid #496b7b;border-radius:6px;
+  background:#1d3d51;overflow-wrap:anywhere}
+.vehicle-add-custom,.diagnosis-measure{border:1px solid #456b81;border-radius:7px;
+  padding:9px;margin:10px 0;background:#182c43}
+.vehicle-add-custom summary,.diagnosis-measure summary{cursor:pointer;font-size:12px}
+.diagnosis-measure label:has(input[type=checkbox]){flex-direction:row;align-items:center}
+.diagnosis-measure label input[type=checkbox]{width:auto;min-width:auto}
+#universalScanResults{max-height:360px;overflow:auto}
+.universal-candidate{display:block;width:100%;text-align:left;padding:6px;
+  margin:5px 0;background:#193e47;border:1px solid #466c71;font-size:11px}
+#diagnosisResult{max-height:660px;overflow-y:auto;font-size:12px;line-height:1.5}
+.diagnosis-finding{background:#3e3328;border-left:3px solid #ffce79;
+  padding:9px;margin:9px 0;border-radius:0 6px 6px 0}
+.diagnosis-finding strong{color:#ffeab2}
+.diagnosis-finding p{overflow-wrap:anywhere}
+.diagnosis-finding ul,.electrical-diagnosis-panel ul{margin:8px 0;padding-left:21px}
+.diagnosis-empty{background:#293b4d;padding:10px;border-radius:7px}
+.diagnosis-warning,.diagnosis-missing{font-size:11px;line-height:1.5;
+  color:#ffdfb2;background:#513d2b;border:1px solid #b38751;padding:9px;border-radius:6px}

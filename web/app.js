@@ -1,4 +1,4 @@
-const $=id=>document.getElementById(id);const S={diagrams:[],diagram:null,annotations:[],paths:[],mode:'pan',scale:1,tx:0,ty:0,pending:[],point:null,drag:null,terminals:[],links:[],auto:[],graph:{run:null,edges:[],events:[],label_links:[]},selectedEdge:null,segmentation:{run:null,edges:[]},associations:{run:null,candidates:[]},selectedAssociation:null,terminalCandidates:{run:null,candidates:[]},circleCandidates:{run:null,candidates:[]},evidence:{run:null,circles:[]},independent:{run:null,circles:[]},pathMatches:{run:null,matches:[]},fuseAudit:{run:null,items:[]},localOCR:{run:null,items:[]},diagnostics:{run:null,items:[]},continuity:{run:null,items:[]},targeted:{run:null,items:[]},gapVisual:{run:null,items:[]},components:{run:null,items:[]},trace:{run:null,items:[]},selectedTrace:null,enhanced:{run:null,items:[]},selectedEnhanced:null,corrected:{run:null,items:[]},selectedCorrected:null,branchesV0320:{run:null,items:[]},selectedBranchFuse:null,terminalAccuracy:{run:null,items:[]},selectedAccuracyTarget:null,mvp:{summary:null,circuits:[],review_queue:[]},selectedMvpFuse:null};const api=async(url,opts)=>{const r=await fetch(url,opts);const j=await r.json();if(!r.ok)throw Error(j.error||'request failed');return j};const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);const S={diagrams:[],diagram:null,annotations:[],paths:[],mode:'pan',scale:1,tx:0,ty:0,pending:[],point:null,drag:null,terminals:[],links:[],auto:[],graph:{run:null,edges:[],events:[],label_links:[]},selectedEdge:null,segmentation:{run:null,edges:[]},associations:{run:null,candidates:[]},selectedAssociation:null,terminalCandidates:{run:null,candidates:[]},circleCandidates:{run:null,candidates:[]},evidence:{run:null,circles:[]},independent:{run:null,circles:[]},pathMatches:{run:null,matches:[]},fuseAudit:{run:null,items:[]},localOCR:{run:null,items:[]},diagnostics:{run:null,items:[]},continuity:{run:null,items:[]},targeted:{run:null,items:[]},gapVisual:{run:null,items:[]},components:{run:null,items:[]},trace:{run:null,items:[]},selectedTrace:null,enhanced:{run:null,items:[]},selectedEnhanced:null,corrected:{run:null,items:[]},selectedCorrected:null,branchesV0320:{run:null,items:[]},selectedBranchFuse:null,terminalAccuracy:{run:null,items:[]},selectedAccuracyTarget:null,mvp:{summary:null,circuits:[],review_queue:[]},selectedMvpFuse:null,vehicleCatalog:{brands:[],models:[],vehicle_types:[]},vehicleProfiles:[],vehicleBinding:null,universalScan:null,diagnosis:null};const api=async(url,opts)=>{const r=await fetch(url,opts);const j=await r.json();if(!r.ok)throw Error(j.error||'request failed');return j};const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function size(){const d=S.diagram;return {w:d.width,h:d.height}}function renderTransform(){const st=$('stage');st.style.width=S.diagram.width+'px';st.style.height=S.diagram.height+'px';st.style.transform=`translate(${S.tx}px,${S.ty}px) scale(${S.scale})`;}
 function fit(){const v=$('viewport'),d=S.diagram;S.scale=Math.min((v.clientWidth-40)/d.width,(v.clientHeight-40)/d.height,1.5);S.tx=(v.clientWidth-d.width*S.scale)/2;S.ty=(v.clientHeight-d.height*S.scale)/2;renderTransform()}
 function point(ev){const r=$('viewport').getBoundingClientRect();return [(ev.clientX-r.left-S.tx)/S.scale/S.diagram.width,(ev.clientY-r.top-S.ty)/S.scale/S.diagram.height].map(x=>Math.max(0,Math.min(1,x)))}
@@ -15,14 +15,14 @@ $('buildBranchTrace').disabled=!exampleOnly;
 $('uploadInfo').textContent=exampleOnly
   ? 'Junction Block example: saved six-fuse assisted review is available.'
   : 'Uploaded/other diagram: manual mapping mode. Automated six-fuse inference is not available; please add annotations, manual paths, and terminals.';
-const img=$('diagramImg');img.src='/images/'+S.diagram.image_file;S.pending=[];fit();const decoded=typeof img.decode==='function'?img.decode():new Promise((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(new Error('Gambar tidak tersedia'));return;}img.addEventListener('load',resolve,{once:true});img.addEventListener('error',()=>reject(new Error('Gagal mengambil gambar')),{once:true});});const imagePromise=window.ActionProgress?window.ActionProgress.hold(decoded,'Menyiapkan gambar dan overlay diagram'):decoded;await Promise.all([refresh(),imagePromise]);draw()}
+const img=$('diagramImg');img.src='/images/'+S.diagram.image_file;S.pending=[];fit();const decoded=typeof img.decode==='function'?img.decode():new Promise((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(new Error('Gambar tidak tersedia'));return;}img.addEventListener('load',resolve,{once:true});img.addEventListener('error',()=>reject(new Error('Gagal mengambil gambar')),{once:true});});const imagePromise=window.ActionProgress?window.ActionProgress.hold(decoded,'Menyiapkan gambar dan overlay diagram'):decoded;await Promise.all([refresh(),imagePromise,loadVehicleBinding(),loadPreviousUniversalScan()]);draw()}
 function mode(m){S.mode=m;S.pending=[];document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));$('finish').hidden=m!=='path';$('cancel').hidden=m!=='path';$('viewport').style.cursor=m==='pan'?'grab':'crosshair';draw()}
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>mode(b.dataset.mode));$('search').oninput=draw;$('diagram').onchange=change;$('reset').onclick=fit;function zoom(f,at){const v=$('viewport');const x=at?.[0]??v.clientWidth/2,y=at?.[1]??v.clientHeight/2;const old=S.scale;S.scale=Math.min(8,Math.max(.08,old*f));S.tx=x-(x-S.tx)*S.scale/old;S.ty=y-(y-S.ty)*S.scale/old;renderTransform()};$('zin').onclick=()=>zoom(1.25);$('zout').onclick=()=>zoom(.8);$('viewport').onwheel=e=>{e.preventDefault();const r=$('viewport').getBoundingClientRect();zoom(e.deltaY<0?1.15:.87,[e.clientX-r.left,e.clientY-r.top])};
 $('viewport').onpointerdown=e=>{if(e.button!==0)return;if(S.mode==='pan'){S.drag={x:e.clientX,y:e.clientY,tx:S.tx,ty:S.ty};$('viewport').setPointerCapture(e.pointerId)}};$('viewport').onpointermove=e=>{if(S.drag){S.tx=S.drag.tx+e.clientX-S.drag.x;S.ty=S.drag.ty+e.clientY-S.drag.y;renderTransform()}};$('viewport').onpointerup=()=>S.drag=null;
 $('overlay').addEventListener('click',e=>{if(S.mode==='pan'||e.target!==$('overlay'))return;const p=point(e);if(S.mode==='annotation'){S.point=p;$('editor').showModal()}else{S.pending.push(p);draw()}});
 $('close').onclick=()=>$('editor').close();$('editForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await api('/api/annotations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({diagram_id:S.diagram.id,kind:f.get('kind'),label:f.get('label'),notes:f.get('notes'),x:S.point[0],y:S.point[1],w:.035,h:.025})});$('editor').close();e.target.reset();await refresh()}catch(err){alert(err.message)}};
 $('finish').onclick=async()=>{if(S.pending.length<2)return alert('Minimal dua titik');const label=prompt('Nama jalur (manual):');if(!label)return;try{await api('/api/paths',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({diagram_id:S.diagram.id,label,points:S.pending})});S.pending=[];await refresh()}catch(err){alert(err.message)}};$('cancel').onclick=()=>{S.pending=[];draw()};
-(async()=>{S.diagrams=await api('/api/diagrams');for(const d of S.diagrams){const o=document.createElement('option');o.value=d.id;o.textContent=d.title;$('diagram').append(o)}$('diagram').value='junction_block';await change()})().catch(e=>{$('status').textContent=e.message});
+(async()=>{await initVehicleCatalog();await initDiagnosisOptions();S.diagrams=await api('/api/diagrams');for(const d of S.diagrams){const o=document.createElement('option');o.value=d.id;o.textContent=d.title;$('diagram').append(o)}$('diagram').value='junction_block';await change()})().catch(e=>{$('status').textContent=e.message});
 
 function options(el,items,fmt){el.replaceChildren();for(const item of items){const o=document.createElement('option');o.value=item.id;o.textContent=fmt(item);el.append(o)}}
 function mappingRow(container,title,detail,type,obj){const row=document.createElement('div');row.className='item';const b=document.createElement('button');b.textContent=title;b.title=detail;b.onclick=()=>{inspect(type,{...obj,label:title,notes:detail});if(type==='circuit-links'){const p=S.paths.find(x=>x.id===obj.path_id);if(p){$('search').value='';draw();const el=[...$('overlay').querySelectorAll('polyline')][S.paths.indexOf(p)];if(el){el.classList.add('selected-wire');setTimeout(()=>el.classList.remove('selected-wire'),3500)}}}};const del=document.createElement('button');del.className='delete';del.textContent='×';del.onclick=async()=>{if(!confirm('Hapus mapping ini?'))return;try{await api(`/api/${type}/${obj.id}`,{method:'DELETE'});await refresh()}catch(e){alert(e.message)}};row.append(b,del);container.append(row)}
@@ -1019,4 +1019,258 @@ $('uploadDiagramFile').onchange=async(event)=>{
  }finally{
    button.disabled=false;input.value='';
  }
+};
+
+
+// v0.4.0: three-level vehicle selector is local/catalog-based and expandable,
+// never a source of variant-specific verified wiring diagrams.
+const $makeOption=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;return o};
+function refreshSavedVehicles(prefer){
+ const sel=$('savedVehicleProfile'),previous=prefer??sel.value;
+ sel.replaceChildren();sel.append($makeOption('','Pilih kendaraan tersimpan'));
+ for(const p of S.vehicleProfiles){
+   sel.append($makeOption(p.id,p.brand_name+' '+p.model_name+
+      (p.variant?' '+p.variant:'')+' — '+p.year));
+ }
+ if(S.vehicleProfiles.some(p=>p.id===previous))sel.value=previous;
+}
+function renderVehicleBrands(preferred){
+ const sel=$('vehicleBrand');sel.replaceChildren();
+ sel.append($makeOption('','Pilih merk mobil'));
+ for(const b of S.vehicleCatalog.brands)sel.append($makeOption(b.id,b.name));
+ if(preferred&&S.vehicleCatalog.brands.some(b=>b.id===preferred))sel.value=preferred;
+ renderVehicleTypes();
+}
+function renderVehicleTypes(preferred){
+ const brand=$('vehicleBrand').value,sel=$('vehicleBodyType');
+ const models=S.vehicleCatalog.models.filter(m=>m.brand_id===brand);
+ const types=[...new Set(models.map(m=>m.body_type))].sort();
+ sel.replaceChildren();sel.append($makeOption('','Pilih jenis / tipe bodi'));
+ for(const t of types)sel.append($makeOption(t,t));
+ if(preferred&&types.includes(preferred))sel.value=preferred;
+ renderVehicleNames();
+}
+function renderVehicleNames(preferred){
+ const brand=$('vehicleBrand').value,type=$('vehicleBodyType').value;
+ const sel=$('vehicleModel');sel.replaceChildren();
+ sel.append($makeOption('','Pilih nama/model mobil'));
+ for(const m of S.vehicleCatalog.models.filter(m=>
+    m.brand_id===brand&&m.body_type===type)){
+   sel.append($makeOption(m.id,m.name));
+ }
+ if(preferred&&S.vehicleCatalog.models.some(m=>m.id===preferred))sel.value=preferred;
+}
+async function initVehicleCatalog(preferredBrand,preferredModel){
+ const [catalog,profiles]=await Promise.all([
+   api('/api/vehicle-catalog'),api('/api/vehicle-profiles')]);
+ S.vehicleCatalog=catalog;S.vehicleProfiles=profiles;
+ const brand=preferredBrand||$('vehicleBrand').value;
+ const model=preferredModel||$('vehicleModel').value;
+ renderVehicleBrands(brand);
+ const found=catalog.models.find(m=>m.id===model&&m.brand_id===$('vehicleBrand').value);
+ if(found)renderVehicleTypes(found.body_type),renderVehicleNames(found.id);
+ refreshSavedVehicles();
+ const type=$('customVehicleBody');type.replaceChildren();
+ for(const v of catalog.vehicle_types)type.append($makeOption(v,v));
+ $('vehicleYear').value='2026';
+ $('vehicleInfo').textContent=catalog.brands.length+' merk / '+
+    catalog.models.length+' model awal. Varian & tahun dipilih manual; katalog ini tidak memverifikasi wiring kendaraan.';
+}
+$('vehicleBrand').onchange=()=>renderVehicleTypes();
+$('vehicleBodyType').onchange=()=>renderVehicleNames();
+async function loadVehicleBinding(){
+ if(!S.diagram)return;
+ S.vehicleBinding=await api('/api/vehicle-binding?diagram='+
+   encodeURIComponent(S.diagram.id));
+ if(S.vehicleBinding){
+   const v=S.vehicleBinding;
+   renderVehicleBrands(v.brand_id);renderVehicleTypes(v.body_type);
+   renderVehicleNames(v.model_id);
+   $('vehicleVariant').value=v.variant||'';
+   $('vehicleYear').value=v.year;
+   $('vehiclePowertrain').value=v.powertrain||'unknown';
+   refreshSavedVehicles(v.id);
+   $('vehicleInfo').textContent='Diagram ini terhubung dengan: '+v.brand_name+
+      ' '+v.model_name+' '+(v.variant||'')+' '+v.year+
+      '. Identitas kendaraan belum memvalidasi pinout, mesin, atau diagram servis.';
+ }else{
+   $('savedVehicleProfile').value='';
+   $('vehicleInfo').textContent='Diagram ini BELUM dihubungkan ke kendaraan. Pilih merk, jenis, nama mobil, varian & tahun lalu simpan.';
+ }
+}
+$('saveVehicle').onclick=async()=>{
+ const button=$('saveVehicle');button.disabled=true;
+ try{
+   const body={brand_id:$('vehicleBrand').value,model_id:$('vehicleModel').value,
+     year:$('vehicleYear').value,variant:$('vehicleVariant').value,
+     powertrain:$('vehiclePowertrain').value};
+   const saved=await api('/api/vehicle-profile',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify(body)});
+   const attached=await api('/api/diagram-vehicle-bind',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({diagram_id:S.diagram.id,profile_id:saved.id})});
+   S.vehicleProfiles=await api('/api/vehicle-profiles');
+   S.vehicleBinding=attached;refreshSavedVehicles(saved.id);
+   $('vehicleInfo').textContent='✓ '+saved.brand_name+' '+saved.model_name+
+      ' '+saved.variant+' ('+saved.year+') terhubung. Kompatibilitas wiring belum tervalidasi.';
+ }catch(error){$('vehicleInfo').textContent='Gagal simpan: '+error.message;
+   window.ActionProgress?.reportError(error.message);
+ }finally{button.disabled=false;}
+};
+$('bindSavedVehicle').onclick=async()=>{
+ const id=$('savedVehicleProfile').value;if(!id){$('vehicleInfo').textContent='Pilih profil kendaraan tersimpan.';return;}
+ const button=$('bindSavedVehicle');button.disabled=true;
+ try{
+   S.vehicleBinding=await api('/api/diagram-vehicle-bind',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({diagram_id:S.diagram.id,profile_id:id})});
+   await loadVehicleBinding();
+ }catch(error){$('vehicleInfo').textContent='Gagal hubungkan: '+error.message;
+   window.ActionProgress?.reportError(error.message);
+ }finally{button.disabled=false;}
+};
+$('addCustomVehicleModel').onclick=async()=>{
+ const button=$('addCustomVehicleModel');button.disabled=true;
+ try{
+   const record=await api('/api/vehicle-model-add',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({brand_name:$('customVehicleBrand').value,
+       model_name:$('customVehicleModel').value,body_type:$('customVehicleBody').value})});
+   await initVehicleCatalog(record.brand_id,record.model_id);
+   renderVehicleTypes(record.body_type);renderVehicleNames(record.model_id);
+   $('vehicleInfo').textContent='Merk & model baru disimpan: '+record.brand_name+
+      ' '+record.model_name+'. Pilih varian & tahun untuk menghubungkan ke diagram.';
+ }catch(error){$('vehicleInfo').textContent='Gagal tambah model: '+error.message;
+   window.ActionProgress?.reportError(error.message);
+ }finally{button.disabled=false;}
+};
+async function initDiagnosisOptions(){
+ const info=await api('/api/diagnosis-options');
+ for(const [id,label] of Object.entries(info.symptoms))
+   $('diagnosisSymptom').append($makeOption(id,label));
+ for(const [id,label] of Object.entries(info.systems))
+   $('diagnosisSystem').append($makeOption(id,label));
+}
+async function loadPreviousUniversalScan(){
+ S.universalScan=await api('/api/universal-scan?diagram='+encodeURIComponent(S.diagram.id));
+ showUniversalScan(S.universalScan);
+}
+function showUniversalScan(result){
+ const root=$('universalScanResults');root.replaceChildren();
+ if(!result?.summary){
+   $('universalScanInfo').textContent='Klik Analisis Gambar untuk ekstraksi OCR & garis. Butuh Python Pillow + opsional Tesseract/OpenCV.';
+   return;
+ }
+ const r=result.summary;
+ $('universalScanInfo').textContent=(result.cache_hit?'CACHE HIT • ':'SCAN BARU • ')+
+    r.candidate_count+' kandidat visual • OCR '+(r.ocr_available?'tersedia':'tidak tersedia')+
+    ' • CV '+(r.cv_available?'tersedia':'tidak tersedia')+
+    ' • 0 koneksi listrik terverifikasi • '+r.older_stages_rerun+' proses lama diulang.';
+ const caution=document.createElement('p');caution.className='muted';
+ caution.textContent=r.warning+' '+(r.notes||[]).join(' / ');
+ root.append(caution);
+ const byKind=document.createElement('p');byKind.className='muted';
+ byKind.textContent=(r.kinds||[]).map(x=>x.kind+': '+x.count).join(' • ');
+ root.append(byKind);
+ for(const c of (result.candidates||[]).filter(z=>z.kind!=='line_segment_candidate').slice(0,32)){
+   const row=document.createElement('button');row.className='universal-candidate';
+   row.textContent=c.kind+': '+c.label+' • OCR '+Math.round(c.confidence*100)+'%';
+   row.onclick=()=>inspect('generic OCR candidate',{...c,
+      notes:'Unverified visual text. Confidence is OCR confidence, not wire connectivity.'});
+   root.append(row);
+ }
+}
+$('buildUniversalScan').onclick=async()=>{
+ const b=$('buildUniversalScan');b.disabled=true;
+ $('universalScanInfo').textContent='Menganalisis teks dan potongan garis dari gambar aktif...';
+ try{
+   const report=await api('/api/universal-scan-build',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({diagram_id:S.diagram.id})});
+   S.universalScan=report;showUniversalScan(report);
+   S.auto=await api('/api/auto-candidates?diagram='+encodeURIComponent(S.diagram.id));
+   $('autoOverlay').checked=true;draw();
+ }catch(error){$('universalScanInfo').textContent='Scan gagal: '+error.message;
+   window.ActionProgress?.reportError(error.message);
+ }finally{b.disabled=false;}
+};
+function renderDiagnosis(report){
+ const root=$('diagnosisResult');root.replaceChildren();
+ if(!report)return;
+ $('diagnosisInfo').textContent=report.title+
+    ' • '+report.status+' • tidak ada konektivitas listrik terverifikasi.';
+ const summary=document.createElement('p');summary.className='muted';
+ summary.textContent='Diagnosis otomatis TIDAK terverifikasi. Hasil menggunakan keluhan/pengukuran user, bukan validasi pinout: '+
+   (report.vehicle?(report.vehicle.brand_name+' '+report.vehicle.model_name+
+      ' '+report.vehicle.year):'kendaraan belum dipilih')+'.';
+ root.append(summary);
+ if(!report.findings?.length){
+   const empty=document.createElement('p');empty.className='diagnosis-empty';
+   empty.textContent=report.status==='safety_restricted'
+      ? 'Sistem airbag atau high-voltage: lanjut ke teknisi tersertifikasi.'
+      : 'Belum ada bukti cukup untuk menuduh komponen tertentu.';
+   root.append(empty);
+ }
+ for(const f of report.findings||[]){
+   const card=document.createElement('article');card.className='diagnosis-finding';
+   const head=document.createElement('strong');head.textContent=f.title;
+   const desc=document.createElement('p');desc.textContent=f.interpretation;
+   const evid=document.createElement('p');evid.className='muted';
+   evid.textContent='Berdasarkan input: '+f.based_on_fields.join(', ')+
+       '. Ini hipotesis, bukan kepastian kerusakan.';
+   card.append(head,desc,evid);
+   const checks=document.createElement('ul');
+   for(const v of f.suggested_checks||[]){
+     const li=document.createElement('li');li.textContent=v;checks.append(li);
+   }
+   card.append(checks);root.append(card);
+ }
+ const steps=document.createElement('details');steps.open=true;
+ const sum=document.createElement('summary');sum.textContent='Langkah pemeriksaan berikutnya';
+ steps.append(sum);
+ const ul=document.createElement('ul');
+ for(const v of report.suggested_next_checks||[]){
+   const li=document.createElement('li');li.textContent=v;ul.append(li);
+ }
+ steps.append(ul);root.append(steps);
+ if(report.missing_evidence?.length){
+   const missing=document.createElement('p');missing.className='diagnosis-missing';
+   missing.textContent='Data belum tersedia: '+report.missing_evidence.join(' / ');
+   root.append(missing);
+ }
+ const footer=document.createElement('p');footer.className='muted';
+ footer.textContent='Case '+report.case_id?.slice(0,12)+' • '+
+   (report.cache_hit?'stored result reused':'stored in local DB')+
+   ' • Tidak boleh melakukan bypass fuse / HV / SRS probing.';
+ root.append(footer);
+}
+$('runElectricalDiagnosis').onclick=async()=>{
+ const b=$('runElectricalDiagnosis');b.disabled=true;
+ $('diagnosisInfo').textContent='Menyusun hipotesis berdasarkan gejala dan data 12V yang tersedia...';
+ const measurements={
+   fuse_continuity:$('diagFuseContinuity').value,
+   load_active:$('diagLoadActive').checked
+ };
+ const values={
+   battery_voltage_off_v:'diagBattery',
+   fuse_input_v:'diagFuseIn',
+   fuse_output_v:'diagFuseOut',
+   load_feed_v:'diagLoadFeed',
+   ground_voltage_drop_v:'diagGroundDrop'
+ };
+ for(const [key,id] of Object.entries(values)){
+   if($(id).value.trim()!=='')measurements[key]=$(id).value;
+ }
+ try{
+   const report=await api('/api/diagnose',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({diagram_id:S.diagram.id,
+       symptom:$('diagnosisSymptom').value,
+       system:$('diagnosisSystem').value,
+       measurements,notes:$('diagNotes').value})});
+   S.diagnosis=report;renderDiagnosis(report);
+ }catch(error){$('diagnosisInfo').textContent='Analisis gagal: '+error.message;
+   window.ActionProgress?.reportError(error.message);
+ }finally{b.disabled=false;}
 };
