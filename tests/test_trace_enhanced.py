@@ -120,6 +120,23 @@ class EnhancedTraceTests(unittest.TestCase):
                   VALUES('new','junction_block','cr','newinput','{}')""")
                 sql.commit()
             self.assertTrue(latest(db,'junction_block')['stale'])
+    def test_changed_source_blocks_stale_geometry_without_rebuild(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db=Path(tmp)/'source.db'
+            fixture(db)
+            image=Path(tmp)/'original.png'
+            image.write_bytes(b'changed diagram bytes')
+            build_trace(db,'junction_block',image)
+            with sqlite3.connect(db) as con:
+                con.execute("ALTER TABLE auto_runs_v032 ADD COLUMN image_sha256 TEXT")
+                con.execute("UPDATE auto_runs_v032 SET image_sha256='old_image_checksum'")
+                con.commit()
+            with self.assertRaisesRegex(ValueError,'image changed'):
+                build(db,'junction_block',image)
+            with sqlite3.connect(db) as con:
+                self.assertEqual(con.execute(
+                    'SELECT count(*) FROM enhanced_runs_v0318').fetchone()[0],0)
+
     def test_without_old_trace_fails_before_processing(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'db.sqlite'
