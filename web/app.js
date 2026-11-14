@@ -884,7 +884,7 @@ function renderMvp(){
            review_status:status.value,manual_number:input.value.trim()||null})
        });
        S.mvp=await api('/api/mvp-report?diagram='+encodeURIComponent(S.diagram.id));
-       renderMvp();draw();
+       renderMvp();draw();await awaitMvpImagePreviews();
        $('mvpInfo').textContent='Visual review saved • no previous OCR/analysis rerun • 0 electrically verified.';
      }catch(error){
        $('mvpInfo').textContent='Review failed: '+error.message;
@@ -894,6 +894,19 @@ function renderMvp(){
    controls.append(status,input,save);card.append(controls);queue.append(card);
  }
 }
+async function awaitMvpImagePreviews(){
+ const pictures=[...$('mvpReviewQueue').querySelectorAll('img')];
+ const decoding=pictures.map(img=>typeof img.decode==='function'
+    ? img.decode()
+    : new Promise((resolve,reject)=>{
+        if(img.complete)return img.naturalWidth?resolve():reject(new Error('Preview missing'));
+        img.addEventListener('load',resolve,{once:true});
+        img.addEventListener('error',()=>reject(new Error('Preview failed to load')),{once:true});
+      }));
+ const work=Promise.all(decoding);
+ return window.ActionProgress?
+   window.ActionProgress.hold(work,'Loading reviewed circle images on the diagram'):work;
+}
 $('layerMvp').onchange=draw;
 $('loadMvp').onclick=async()=>{
  const button=$('loadMvp');button.disabled=true;
@@ -902,7 +915,7 @@ $('loadMvp').onclick=async()=>{
    S.mvp=await api('/api/mvp-report?diagram='+encodeURIComponent(S.diagram.id));
    $('layerTerminalAccuracy').checked=false;$('layerBranchTrace').checked=false;
    $('layerCorrected').checked=false;$('layerEnhanced').checked=false;$('layerTrace').checked=false;
-   renderMvp();draw();
+   renderMvp();draw();await awaitMvpImagePreviews();
  }catch(error){
    S.mvp={summary:null,circuits:[],review_queue:[],error:error.message};
    renderMvp();window.ActionProgress?.reportError(error.message);
