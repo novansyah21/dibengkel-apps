@@ -1,28 +1,16 @@
-# AutoWiring v0.3.8 — Visual Evidence Audit (Experimental)
+# AutoWiring v0.3.9 — Endpoint-independent Circle OCR (Experimental)
 
-## Windows
+Run on Windows:
 ```powershell
 py -m pip install -r requirements-auto.txt
 py viewer.py
 ```
-Open http://127.0.0.1:8765 and hard-refresh.
+Open http://127.0.0.1:8765 and hard refresh.
 
-## Workflow
-1. Analyze diagram automatically (if needed).
-2. Build geometry graph.
-3. Segment & group paths.
-4. Find candidate circuits.
-5. Detect terminal numbers near path endpoints.
-6. Detect terminal circles & OCR.
-7. **Audit all detected circles**.
-8. Enable **Show all detected circles (debug)** and inspect orange rejected/green OCR-match circles; export full evidence JSON.
+Workflow: run the v0.3.8 audit sequence, then click **OCR all detected circles (no endpoint filter)**. Toggle **Show independently read circles** to highlight purple candidates and export independent OCR JSON.
 
-## New in v0.3.8
-- Audit every Hough-detected circle, including unmatched/rejected hypotheses.
-- Store reasons for missing endpoints, excessive distance, ambiguous proximity and failed OCR.
-- Show status breakdown and inspectable SVG overlay.
-- Persist data in `evidence_runs_v038` and `evidence_circles_v038`.
+Unlike v0.3.8, this stage attempts OCR on **every** detected Hough circle, including the 86 previously marked too far from candidate endpoints. Results are stored in independent_runs_v039 and independent_circles_v039. This can take longer due to many Tesseract invocations.
 
-**Not implemented:** True circuit path reconstruction, validated connector-pin mapping, verified electrical connectivity, OCR crop preview. These require further image-level validation. Debug circles can overlap fuse symbols or unrelated marks. The v0.3.7 baseline remains unchanged. No sample images are committed due to uncertain redistribution rights.
+**Important:** These numbers are UNASSOCIATED visual OCR readings, not fuse pinouts, reconstructed circuit paths, verified connector identities, or electrical continuity. False positives from fuse symbols or other circles remain possible. No sample source images are redistributed.
 
-Back up `output/autowiring.db` before testing. Tests: `py -m unittest discover -s tests -v`.
+Next planned: OCR crop preview, segment-to-circle matching and conservative multi-branch reconstruction. Back up output/autowiring.db before testing.
