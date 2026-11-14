@@ -169,3 +169,31 @@ main{position:relative}
 .terminal-accuracy-ring{fill:rgba(87,205,254,.13);stroke:#87e9ff;
   stroke-width:3;stroke-dasharray:4 3;cursor:pointer}
 .terminal-accuracy-ring.active{stroke:#ffecb2;stroke-width:5}
+
+
+/* v0.3.22 MVP 0.1 — source-locked assisted review only, never diagnosis. */
+.mvp-release-panel{border:2px solid #55b8a6;background:#112e3c;border-radius:12px;padding:12px;margin:12px 0 14px}
+.mvp-release-panel h3{margin:2px 0 9px;color:#c4fff4;font-size:16px}
+.mvp-release-panel h4{margin:12px 0 8px;color:#a7e2d4;font-size:13px}
+.mvp-release-panel .primary-action{background:#096f79!important;min-height:46px;font-weight:bold}
+.mvp-release-panel .muted{font-size:12px;line-height:1.5}
+#mvpInfo{margin:10px 0;padding:8px;background:#173d4a;border-radius:8px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+#mvpCircuits,#mvpReviewQueue{max-height:475px;overflow-y:auto}
+.mvp-fuse-card,.mvp-review-card{background:#1d3a4b;border:1px solid #427987;border-radius:9px;padding:9px 8px;margin:7px 0}
+.mvp-fuse-card.selected{outline:2px solid #e6c785}
+.mvp-fuse-head{width:100%;text-align:left;line-height:1.4;white-space:normal;font-weight:700}
+.mvp-route{font-size:11px;line-height:1.4;color:#d5ecf4;margin:6px 0;overflow-wrap:anywhere}
+.mvp-route.branch{padding-left:10px;border-left:2px dashed #daaf6d;color:#f5e3bb}
+.mvp-review-card strong{display:block;line-height:1.45}
+.mvp-glyph-pair{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.mvp-glyph-pair>div{display:flex;flex-direction:column;gap:4px;min-width:100px}
+.mvp-glyph-img{width:112px;height:112px;background:white;border-radius:5px;image-rendering:pixelated}
+.mvp-glyph-pair span{font-size:10px;color:#c0d4da}
+.mvp-review-controls{display:flex;flex-direction:column;gap:5px}
+.mvp-review-controls select,.mvp-review-controls input,.mvp-review-controls button{width:100%;box-sizing:border-box}
+.mvp-actions{display:grid;gap:7px;margin:12px 0}
+.mvp-actions button{white-space:normal;line-height:1.35}
+.mvp-safety{font-size:11px;line-height:1.55;color:#ffe3ac;background:#4a3b28;padding:9px;border:1px solid #b68a45;border-radius:8px}
+.mvp-main-line{stroke:#52e8d5;stroke-width:3.5;stroke-dasharray:9 5;fill:none;opacity:.9;cursor:pointer;pointer-events:stroke}
+.mvp-branch-line{stroke:#f0b45f;stroke-width:3;stroke-dasharray:5 5;fill:none;opacity:.85;cursor:pointer;pointer-events:stroke}
+.mvp-selected-path{stroke:#ffffa1!important;stroke-width:6!important;opacity:1!important}

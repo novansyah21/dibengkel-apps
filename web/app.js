@@ -1,13 +1,21 @@
-const $=id=>document.getElementById(id);const S={diagrams:[],diagram:null,annotations:[],paths:[],mode:'pan',scale:1,tx:0,ty:0,pending:[],point:null,drag:null,terminals:[],links:[],auto:[],graph:{run:null,edges:[],events:[],label_links:[]},selectedEdge:null,segmentation:{run:null,edges:[]},associations:{run:null,candidates:[]},selectedAssociation:null,terminalCandidates:{run:null,candidates:[]},circleCandidates:{run:null,candidates:[]},evidence:{run:null,circles:[]},independent:{run:null,circles:[]},pathMatches:{run:null,matches:[]},fuseAudit:{run:null,items:[]},localOCR:{run:null,items:[]},diagnostics:{run:null,items:[]},continuity:{run:null,items:[]},targeted:{run:null,items:[]},gapVisual:{run:null,items:[]},components:{run:null,items:[]},trace:{run:null,items:[]},selectedTrace:null,enhanced:{run:null,items:[]},selectedEnhanced:null,corrected:{run:null,items:[]},selectedCorrected:null,branchesV0320:{run:null,items:[]},selectedBranchFuse:null,terminalAccuracy:{run:null,items:[]},selectedAccuracyTarget:null};const api=async(url,opts)=>{const r=await fetch(url,opts);const j=await r.json();if(!r.ok)throw Error(j.error||'request failed');return j};const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);const S={diagrams:[],diagram:null,annotations:[],paths:[],mode:'pan',scale:1,tx:0,ty:0,pending:[],point:null,drag:null,terminals:[],links:[],auto:[],graph:{run:null,edges:[],events:[],label_links:[]},selectedEdge:null,segmentation:{run:null,edges:[]},associations:{run:null,candidates:[]},selectedAssociation:null,terminalCandidates:{run:null,candidates:[]},circleCandidates:{run:null,candidates:[]},evidence:{run:null,circles:[]},independent:{run:null,circles:[]},pathMatches:{run:null,matches:[]},fuseAudit:{run:null,items:[]},localOCR:{run:null,items:[]},diagnostics:{run:null,items:[]},continuity:{run:null,items:[]},targeted:{run:null,items:[]},gapVisual:{run:null,items:[]},components:{run:null,items:[]},trace:{run:null,items:[]},selectedTrace:null,enhanced:{run:null,items:[]},selectedEnhanced:null,corrected:{run:null,items:[]},selectedCorrected:null,branchesV0320:{run:null,items:[]},selectedBranchFuse:null,terminalAccuracy:{run:null,items:[]},selectedAccuracyTarget:null,mvp:{summary:null,circuits:[],review_queue:[]},selectedMvpFuse:null};const api=async(url,opts)=>{const r=await fetch(url,opts);const j=await r.json();if(!r.ok)throw Error(j.error||'request failed');return j};const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function size(){const d=S.diagram;return {w:d.width,h:d.height}}function renderTransform(){const st=$('stage');st.style.width=S.diagram.width+'px';st.style.height=S.diagram.height+'px';st.style.transform=`translate(${S.tx}px,${S.ty}px) scale(${S.scale})`;}
 function fit(){const v=$('viewport'),d=S.diagram;S.scale=Math.min((v.clientWidth-40)/d.width,(v.clientHeight-40)/d.height,1.5);S.tx=(v.clientWidth-d.width*S.scale)/2;S.ty=(v.clientHeight-d.height*S.scale)/2;renderTransform()}
 function point(ev){const r=$('viewport').getBoundingClientRect();return [(ev.clientX-r.left-S.tx)/S.scale/S.diagram.width,(ev.clientY-r.top-S.ty)/S.scale/S.diagram.height].map(x=>Math.max(0,Math.min(1,x)))}
 function svg(tag,attrs){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el}
-function draw(){const overlay=$('overlay');overlay.replaceChildren();overlay.setAttribute('viewBox',`0 0 ${S.diagram.width} ${S.diagram.height}`);const search=$('search').value.toLowerCase();for(const a of S.annotations){if(search&&!`${a.label} ${a.kind} ${a.notes}`.toLowerCase().includes(search))continue;const el=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:Math.max(a.w*S.diagram.width,15),height:Math.max(a.h*S.diagram.height,15),rx:3,class:'box'});el.addEventListener('click',e=>{e.stopPropagation();inspect('annotations',a)});overlay.append(el)}for(const p of S.paths){if(search&&!`${p.label} ${p.notes}`.toLowerCase().includes(search))continue;const el=svg('polyline',{points:p.points.map(q=>`${q[0]*S.diagram.width},${q[1]*S.diagram.height}`).join(' '),class:'wire'});el.addEventListener('click',e=>{e.stopPropagation();inspect('paths',p)});overlay.append(el)}if($('autoOverlay').checked){for(const a of S.auto){const kind=a.kind;const visible=kind==='ocr_connector'?$('layerConnectors').checked:kind==='ocr_fuse_label'?$('layerFuses').checked:kind==='line_segment_candidate'?$('layerLines').checked:$('layerText').checked;if(!visible)continue;if(search&&!`${a.label} ${a.kind}`.toLowerCase().includes(search))continue;const box=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:Math.max(a.w*S.diagram.width,3),height:Math.max(a.h*S.diagram.height,3),class:'auto-box'});box.addEventListener('click',e=>{e.stopPropagation();inspect('machine candidate',{...a,notes:'OCR/CV proposal only; connectivity not verified.'})});overlay.append(box)}}if($('layerGraph').checked){for(const e of S.graph.edges){const el=svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:e.id===S.selectedEdge?'graph-edge selected-wire':'graph-edge'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('geometry candidate',{label:e.axis,verification:e.verification,id:e.id,notes:'Segmen visual, bukan kontinuitas listrik terverifikasi.'})});overlay.append(el)}}if(S.segmentation.edges.length){for(const e of S.segmentation.edges){if(e.classification==='candidate_wire'&&!$('layerSegmented').checked)continue;if(e.classification==='excluded_structural'&&!$('layerExcluded').checked)continue;const el=svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:e.classification==='candidate_wire'?'segment-wire':'segment-excluded'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('segmentation',{label:e.region,kind:e.classification,verification:e.verification,notes:e.reason,id:e.id})});overlay.append(el)}}if($('layerTerminalAccuracy').checked){for(const item of S.terminalAccuracy.items){const point=item.evidence?.circle_center;if(!point)continue;const active=S.selectedAccuracyTarget===item.path_key;const mark=svg('circle',{cx:point[0]*S.diagram.width,cy:point[1]*S.diagram.height,r:active?15:11,class:'terminal-accuracy-ring'+(active?' active':'')});mark.addEventListener('click',e=>{e.stopPropagation();S.selectedAccuracyTarget=item.path_key;renderTerminalAccuracy();draw();inspect('v0.3.21 reviewed terminal',{label:item.fuse_label+' '+item.path_kind,kind:item.ocr_status,verification:'unverified',notes:JSON.stringify(item.evidence),id:item.id})});overlay.append(mark)}}if($('layerBranchTrace').checked){for(const a of S.branchesV0320.items){const active=S.selectedBranchFuse===a.fuse_label;const w=S.diagram.width,h=S.diagram.height;const drawRoute=(route,cls)=>{const pts=route?.points||[];if(pts.length<2)return;const line=svg('polyline',{points:pts.map(p=>p[0]*w+','+p[1]*h).join(' '),class:cls+(active?' branch-path-selected':'')});line.addEventListener('click',e=>{e.stopPropagation();S.selectedBranchFuse=a.fuse_label;renderBranchTrace();draw();inspect('v0.3.20 geometric branch',{label:a.fuse_label,kind:route.kind,verification:'unverified',notes:JSON.stringify(route),id:a.id})});overlay.append(line)};drawRoute(a.main_path,'branch-main-line');for(const br of a.branches){drawRoute(br,'branch-offshoot-line');if(br.points?.length>1){const joint=br.points[0];const circle=svg('circle',{cx:joint[0]*w,cy:joint[1]*h,r:5,class:'branch-joint-ring'});overlay.append(circle)}}}}if($('layerCorrected').checked){for(const a of S.corrected.items){for(const j of a.junction_dots){const pts=j.branch_preview_points;if(pts?.length===2){overlay.append(svg('line',{x1:pts[0][0]*S.diagram.width,y1:pts[0][1]*S.diagram.height,x2:pts[1][0]*S.diagram.width,y2:pts[1][1]*S.diagram.height,class:'corrected-branch-stub'}))}const dot=svg('circle',{cx:j.x*S.diagram.width,cy:j.y*S.diagram.height,r:7,class:'corrected-junction-dot'});dot.addEventListener('click',ev=>{ev.stopPropagation();S.selectedCorrected=a.component_id;renderCorrected();inspect('visual dot junction hypothesis',{label:a.fuse_label,kind:j.status,verification:'unverified',notes:JSON.stringify(j),id:a.id})});overlay.append(dot)}const c=a.terminal_evidence?.best_geometric_candidate;if(c){const circle=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:8,class:'corrected-terminal-lead'});circle.addEventListener('click',ev=>{ev.stopPropagation();S.selectedCorrected=a.component_id;renderCorrected();inspect('geometric terminal lead',{label:a.fuse_label+' to '+c.number,kind:a.terminal_evidence.status,verification:'unverified',notes:JSON.stringify(a.terminal_evidence),id:a.id})});overlay.append(circle);const col=a.terminal_evidence.connector_column_candidate?.label;const txt=svg('text',{x:c.x*S.diagram.width+10,y:c.y*S.diagram.height-9,class:'corrected-terminal-label'});txt.textContent=(col?col+'? ':'')+c.number+'?';overlay.append(txt)}}}if($('layerEnhanced').checked){for(const a of S.enhanced.items){const pts=a.route?.points||[];if(pts.length>=2){const el=svg('polyline',{points:pts.map(p=>p[0]*S.diagram.width+','+p[1]*S.diagram.height).join(' '),class:'enhanced-wire'+(S.selectedEnhanced===a.component_id?' enhanced-wire-selected':'')});el.addEventListener('click',ev=>{ev.stopPropagation();S.selectedEnhanced=a.component_id;renderEnhanced();draw();inspect('v0.3.18 visual hypothesis',{label:a.fuse_label,kind:a.trace_status,verification:'unverified',notes:a.warning,id:a.id})});overlay.append(el)}}}if($('layerTrace').checked){for(const a of S.trace.items){const pts=a.trace?.points||[];if(pts.length>=2){const el=svg('polyline',{points:pts.map(p=>p[0]*S.diagram.width+','+p[1]*S.diagram.height).join(' '),class:'smart-trace-line'+(S.selectedTrace===a.component_id?' smart-trace-selected':'')});el.addEventListener('click',ev=>{ev.stopPropagation();S.selectedTrace=a.component_id;renderTrace();draw();inspect('cached geometric trace',{label:a.fuse_label,kind:a.trace_status,verification:'unverified',notes:a.trace_reason,id:a.id})});overlay.append(el)}if(a.terminal_circle_id){const c=S.independent.circles.find(x=>x.id===a.terminal_circle_id);if(c){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(5,c.r*Math.max(S.diagram.width,S.diagram.height)),class:'smart-trace-terminal'});overlay.append(el)}}}}if($('layerComponents').checked){for(const a of S.components.items){const el=svg('rect',{x:a.x*S.diagram.width-8,y:a.y*S.diagram.height-8,width:16,height:16,class:'component-candidate'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('fuse symbol candidate',{label:a.fuse_label,kind:a.component_type,verification:'unverified',notes:JSON.stringify(a.graph_preview),id:a.id})});overlay.append(el)}}if($('layerContinuity').checked){for(const a of S.continuity.items){overlay.append(svg('line',{x1:a.endpoint_x*S.diagram.width,y1:a.endpoint_y*S.diagram.height,x2:a.neighbor_x*S.diagram.width,y2:a.neighbor_y*S.diagram.height,class:'continuity-gap'}))}}if($('layerDiagnostics').checked){for(const a of S.diagnostics.items){if(a.endpoint_x===null)continue;const el=svg('circle',{cx:a.endpoint_x*S.diagram.width,cy:a.endpoint_y*S.diagram.height,r:7,class:'diagnostic-endpoint'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('terminal diagnostic',{label:a.fuse_label,kind:a.reason,verification:'unverified',notes:JSON.stringify(a.candidates.slice(0,3)),id:a.id})});overlay.append(el)}}if($('layerLocalOCR').checked){for(const a of S.localOCR.items){const el=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:a.w*S.diagram.width,height:a.h*S.diagram.height,class:'local-ocr-box'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('localized OCR',{label:a.label,kind:'ocr_suggestion_unverified',verification:'unverified',notes:a.reason,id:a.id})});overlay.append(el)}}if($('layerFuseAudit').checked){for(const a of S.fuseAudit.items.filter(x=>x.status!=='already_associated')){const el=svg('circle',{cx:a.x*S.diagram.width,cy:a.y*S.diagram.height,r:10,class:'fuse-audit-label'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('fuse audit',{label:a.label,kind:a.status,verification:'unverified',notes:a.reason,id:a.id})});overlay.append(el);for(const id of a.edge_ids){const e=S.segmentation.edges.find(x=>x.source_edge_id===id);if(!e)continue;overlay.append(svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:'fuse-audit-edge'}))}}}if($('layerPathMatches').checked){for(const m of S.pathMatches.matches.filter(m=>m.circle_id)){const c=S.independent.circles.find(x=>x.id===m.circle_id);if(!c)continue;const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(6,c.r*Math.max(S.diagram.width,S.diagram.height)+4),class:'path-match-circle'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('geometric path candidate',{label:m.fuse_label+' → '+m.terminal_text,kind:'geometric_candidate_unverified',verification:'unverified',notes:m.reason+'; distance='+m.geometric_distance,id:m.id})});overlay.append(el)}}if($('layerIndependent').checked){for(const c of S.independent.circles.filter(c=>c.ocr_text)){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(4,c.r*Math.max(S.diagram.width,S.diagram.height)),class:'independent-read'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('independent OCR',{label:c.ocr_text,kind:'unassociated_circle_ocr',verification:'unverified',notes:c.reason+'; OCR '+Math.round(c.ocr_confidence*100)+'%',id:c.id})});overlay.append(el)}}if($('layerAllCircles').checked){for(const c of S.evidence.circles){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(4,c.r*Math.max(S.diagram.width,S.diagram.height)),class:c.status==='ocr_match_unverified'?'evidence-match':'evidence-rejected'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('circle audit',{label:c.ocr_text||'No OCR',kind:c.status,verification:'visual_evidence_unverified',notes:c.reason,id:c.id})});overlay.append(el)}}if($('layerCircleEvidence').checked){for(const c of S.circleCandidates.candidates){overlay.append(svg('circle',{cx:c.circle_x*S.diagram.width,cy:c.circle_y*S.diagram.height,r:Math.max(5,c.circle_r*Math.max(S.diagram.width,S.diagram.height)),class:'circle-evidence'}))}}if(S.selectedAssociation){const ids=new Set(S.selectedAssociation.edge_ids);for(const e of S.segmentation.edges){if(!ids.has(e.source_edge_id))continue;overlay.append(svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:'association-selected'}))}}if($('layerCrossings').checked){for(const ev of S.graph.events){const el=svg('circle',{cx:ev.x*S.diagram.width,cy:ev.y*S.diagram.height,r:4,class:'graph-crossing'});el.addEventListener('click',e=>{e.stopPropagation();inspect('crossing',{label:'Crossing: unknown',verification:ev.verification,id:ev.id,notes:'Persilangan ini tidak dianggap tersambung.'})});overlay.append(el)}}if(S.pending.length){overlay.append(svg('polyline',{points:S.pending.map(q=>`${q[0]*S.diagram.width},${q[1]*S.diagram.height}`).join(' '),class:'wire pending'}))}}
+function draw(){const overlay=$('overlay');overlay.replaceChildren();overlay.setAttribute('viewBox',`0 0 ${S.diagram.width} ${S.diagram.height}`);const search=$('search').value.toLowerCase();for(const a of S.annotations){if(search&&!`${a.label} ${a.kind} ${a.notes}`.toLowerCase().includes(search))continue;const el=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:Math.max(a.w*S.diagram.width,15),height:Math.max(a.h*S.diagram.height,15),rx:3,class:'box'});el.addEventListener('click',e=>{e.stopPropagation();inspect('annotations',a)});overlay.append(el)}for(const p of S.paths){if(search&&!`${p.label} ${p.notes}`.toLowerCase().includes(search))continue;const el=svg('polyline',{points:p.points.map(q=>`${q[0]*S.diagram.width},${q[1]*S.diagram.height}`).join(' '),class:'wire'});el.addEventListener('click',e=>{e.stopPropagation();inspect('paths',p)});overlay.append(el)}if($('autoOverlay').checked){for(const a of S.auto){const kind=a.kind;const visible=kind==='ocr_connector'?$('layerConnectors').checked:kind==='ocr_fuse_label'?$('layerFuses').checked:kind==='line_segment_candidate'?$('layerLines').checked:$('layerText').checked;if(!visible)continue;if(search&&!`${a.label} ${a.kind}`.toLowerCase().includes(search))continue;const box=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:Math.max(a.w*S.diagram.width,3),height:Math.max(a.h*S.diagram.height,3),class:'auto-box'});box.addEventListener('click',e=>{e.stopPropagation();inspect('machine candidate',{...a,notes:'OCR/CV proposal only; connectivity not verified.'})});overlay.append(box)}}if($('layerGraph').checked){for(const e of S.graph.edges){const el=svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:e.id===S.selectedEdge?'graph-edge selected-wire':'graph-edge'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('geometry candidate',{label:e.axis,verification:e.verification,id:e.id,notes:'Segmen visual, bukan kontinuitas listrik terverifikasi.'})});overlay.append(el)}}if(S.segmentation.edges.length){for(const e of S.segmentation.edges){if(e.classification==='candidate_wire'&&!$('layerSegmented').checked)continue;if(e.classification==='excluded_structural'&&!$('layerExcluded').checked)continue;const el=svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:e.classification==='candidate_wire'?'segment-wire':'segment-excluded'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('segmentation',{label:e.region,kind:e.classification,verification:e.verification,notes:e.reason,id:e.id})});overlay.append(el)}}if($('layerMvp').checked){for(const fuse of S.mvp.circuits){const w=S.diagram.width,h=S.diagram.height;const selected=S.selectedMvpFuse===fuse.fuse_label;const line=(route,cls)=>{const pts=route?.points||[];if(pts.length<2)return;const el=svg('polyline',{points:pts.map(p=>p[0]*w+','+p[1]*h).join(' '),class:cls+(selected?' mvp-selected-path':'')});el.addEventListener('click',e=>{e.stopPropagation();S.selectedMvpFuse=fuse.fuse_label;renderMvp();draw();inspect('MVP visual candidate',{label:fuse.fuse_label,kind:'unverified path',notes:JSON.stringify(route),verification:'unverified'})});overlay.append(el)};line(fuse.main,'mvp-main-line');for(const branch of fuse.branches)line(branch,'mvp-branch-line')}}if($('layerTerminalAccuracy').checked){for(const item of S.terminalAccuracy.items){const point=item.evidence?.circle_center;if(!point)continue;const active=S.selectedAccuracyTarget===item.path_key;const mark=svg('circle',{cx:point[0]*S.diagram.width,cy:point[1]*S.diagram.height,r:active?15:11,class:'terminal-accuracy-ring'+(active?' active':'')});mark.addEventListener('click',e=>{e.stopPropagation();S.selectedAccuracyTarget=item.path_key;renderTerminalAccuracy();draw();inspect('v0.3.21 reviewed terminal',{label:item.fuse_label+' '+item.path_kind,kind:item.ocr_status,verification:'unverified',notes:JSON.stringify(item.evidence),id:item.id})});overlay.append(mark)}}if($('layerBranchTrace').checked){for(const a of S.branchesV0320.items){const active=S.selectedBranchFuse===a.fuse_label;const w=S.diagram.width,h=S.diagram.height;const drawRoute=(route,cls)=>{const pts=route?.points||[];if(pts.length<2)return;const line=svg('polyline',{points:pts.map(p=>p[0]*w+','+p[1]*h).join(' '),class:cls+(active?' branch-path-selected':'')});line.addEventListener('click',e=>{e.stopPropagation();S.selectedBranchFuse=a.fuse_label;renderBranchTrace();draw();inspect('v0.3.20 geometric branch',{label:a.fuse_label,kind:route.kind,verification:'unverified',notes:JSON.stringify(route),id:a.id})});overlay.append(line)};drawRoute(a.main_path,'branch-main-line');for(const br of a.branches){drawRoute(br,'branch-offshoot-line');if(br.points?.length>1){const joint=br.points[0];const circle=svg('circle',{cx:joint[0]*w,cy:joint[1]*h,r:5,class:'branch-joint-ring'});overlay.append(circle)}}}}if($('layerCorrected').checked){for(const a of S.corrected.items){for(const j of a.junction_dots){const pts=j.branch_preview_points;if(pts?.length===2){overlay.append(svg('line',{x1:pts[0][0]*S.diagram.width,y1:pts[0][1]*S.diagram.height,x2:pts[1][0]*S.diagram.width,y2:pts[1][1]*S.diagram.height,class:'corrected-branch-stub'}))}const dot=svg('circle',{cx:j.x*S.diagram.width,cy:j.y*S.diagram.height,r:7,class:'corrected-junction-dot'});dot.addEventListener('click',ev=>{ev.stopPropagation();S.selectedCorrected=a.component_id;renderCorrected();inspect('visual dot junction hypothesis',{label:a.fuse_label,kind:j.status,verification:'unverified',notes:JSON.stringify(j),id:a.id})});overlay.append(dot)}const c=a.terminal_evidence?.best_geometric_candidate;if(c){const circle=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:8,class:'corrected-terminal-lead'});circle.addEventListener('click',ev=>{ev.stopPropagation();S.selectedCorrected=a.component_id;renderCorrected();inspect('geometric terminal lead',{label:a.fuse_label+' to '+c.number,kind:a.terminal_evidence.status,verification:'unverified',notes:JSON.stringify(a.terminal_evidence),id:a.id})});overlay.append(circle);const col=a.terminal_evidence.connector_column_candidate?.label;const txt=svg('text',{x:c.x*S.diagram.width+10,y:c.y*S.diagram.height-9,class:'corrected-terminal-label'});txt.textContent=(col?col+'? ':'')+c.number+'?';overlay.append(txt)}}}if($('layerEnhanced').checked){for(const a of S.enhanced.items){const pts=a.route?.points||[];if(pts.length>=2){const el=svg('polyline',{points:pts.map(p=>p[0]*S.diagram.width+','+p[1]*S.diagram.height).join(' '),class:'enhanced-wire'+(S.selectedEnhanced===a.component_id?' enhanced-wire-selected':'')});el.addEventListener('click',ev=>{ev.stopPropagation();S.selectedEnhanced=a.component_id;renderEnhanced();draw();inspect('v0.3.18 visual hypothesis',{label:a.fuse_label,kind:a.trace_status,verification:'unverified',notes:a.warning,id:a.id})});overlay.append(el)}}}if($('layerTrace').checked){for(const a of S.trace.items){const pts=a.trace?.points||[];if(pts.length>=2){const el=svg('polyline',{points:pts.map(p=>p[0]*S.diagram.width+','+p[1]*S.diagram.height).join(' '),class:'smart-trace-line'+(S.selectedTrace===a.component_id?' smart-trace-selected':'')});el.addEventListener('click',ev=>{ev.stopPropagation();S.selectedTrace=a.component_id;renderTrace();draw();inspect('cached geometric trace',{label:a.fuse_label,kind:a.trace_status,verification:'unverified',notes:a.trace_reason,id:a.id})});overlay.append(el)}if(a.terminal_circle_id){const c=S.independent.circles.find(x=>x.id===a.terminal_circle_id);if(c){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(5,c.r*Math.max(S.diagram.width,S.diagram.height)),class:'smart-trace-terminal'});overlay.append(el)}}}}if($('layerComponents').checked){for(const a of S.components.items){const el=svg('rect',{x:a.x*S.diagram.width-8,y:a.y*S.diagram.height-8,width:16,height:16,class:'component-candidate'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('fuse symbol candidate',{label:a.fuse_label,kind:a.component_type,verification:'unverified',notes:JSON.stringify(a.graph_preview),id:a.id})});overlay.append(el)}}if($('layerContinuity').checked){for(const a of S.continuity.items){overlay.append(svg('line',{x1:a.endpoint_x*S.diagram.width,y1:a.endpoint_y*S.diagram.height,x2:a.neighbor_x*S.diagram.width,y2:a.neighbor_y*S.diagram.height,class:'continuity-gap'}))}}if($('layerDiagnostics').checked){for(const a of S.diagnostics.items){if(a.endpoint_x===null)continue;const el=svg('circle',{cx:a.endpoint_x*S.diagram.width,cy:a.endpoint_y*S.diagram.height,r:7,class:'diagnostic-endpoint'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('terminal diagnostic',{label:a.fuse_label,kind:a.reason,verification:'unverified',notes:JSON.stringify(a.candidates.slice(0,3)),id:a.id})});overlay.append(el)}}if($('layerLocalOCR').checked){for(const a of S.localOCR.items){const el=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:a.w*S.diagram.width,height:a.h*S.diagram.height,class:'local-ocr-box'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('localized OCR',{label:a.label,kind:'ocr_suggestion_unverified',verification:'unverified',notes:a.reason,id:a.id})});overlay.append(el)}}if($('layerFuseAudit').checked){for(const a of S.fuseAudit.items.filter(x=>x.status!=='already_associated')){const el=svg('circle',{cx:a.x*S.diagram.width,cy:a.y*S.diagram.height,r:10,class:'fuse-audit-label'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('fuse audit',{label:a.label,kind:a.status,verification:'unverified',notes:a.reason,id:a.id})});overlay.append(el);for(const id of a.edge_ids){const e=S.segmentation.edges.find(x=>x.source_edge_id===id);if(!e)continue;overlay.append(svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:'fuse-audit-edge'}))}}}if($('layerPathMatches').checked){for(const m of S.pathMatches.matches.filter(m=>m.circle_id)){const c=S.independent.circles.find(x=>x.id===m.circle_id);if(!c)continue;const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(6,c.r*Math.max(S.diagram.width,S.diagram.height)+4),class:'path-match-circle'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('geometric path candidate',{label:m.fuse_label+' → '+m.terminal_text,kind:'geometric_candidate_unverified',verification:'unverified',notes:m.reason+'; distance='+m.geometric_distance,id:m.id})});overlay.append(el)}}if($('layerIndependent').checked){for(const c of S.independent.circles.filter(c=>c.ocr_text)){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(4,c.r*Math.max(S.diagram.width,S.diagram.height)),class:'independent-read'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('independent OCR',{label:c.ocr_text,kind:'unassociated_circle_ocr',verification:'unverified',notes:c.reason+'; OCR '+Math.round(c.ocr_confidence*100)+'%',id:c.id})});overlay.append(el)}}if($('layerAllCircles').checked){for(const c of S.evidence.circles){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(4,c.r*Math.max(S.diagram.width,S.diagram.height)),class:c.status==='ocr_match_unverified'?'evidence-match':'evidence-rejected'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('circle audit',{label:c.ocr_text||'No OCR',kind:c.status,verification:'visual_evidence_unverified',notes:c.reason,id:c.id})});overlay.append(el)}}if($('layerCircleEvidence').checked){for(const c of S.circleCandidates.candidates){overlay.append(svg('circle',{cx:c.circle_x*S.diagram.width,cy:c.circle_y*S.diagram.height,r:Math.max(5,c.circle_r*Math.max(S.diagram.width,S.diagram.height)),class:'circle-evidence'}))}}if(S.selectedAssociation){const ids=new Set(S.selectedAssociation.edge_ids);for(const e of S.segmentation.edges){if(!ids.has(e.source_edge_id))continue;overlay.append(svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:'association-selected'}))}}if($('layerCrossings').checked){for(const ev of S.graph.events){const el=svg('circle',{cx:ev.x*S.diagram.width,cy:ev.y*S.diagram.height,r:4,class:'graph-crossing'});el.addEventListener('click',e=>{e.stopPropagation();inspect('crossing',{label:'Crossing: unknown',verification:ev.verification,id:ev.id,notes:'Persilangan ini tidak dianggap tersambung.'})});overlay.append(el)}}if(S.pending.length){overlay.append(svg('polyline',{points:S.pending.map(q=>`${q[0]*S.diagram.width},${q[1]*S.diagram.height}`).join(' '),class:'wire pending'}))}}
 function inspect(type,obj){$('inspector').innerHTML=`<b>${esc(obj.label||obj.connector_label||obj.path_label)}</b><p>Jenis: ${esc(obj.kind||type)}</p><p>Status: ${esc(obj.verification)}</p><p>${esc(obj.notes||'Tanpa catatan')}</p><p class="muted">ID: ${esc(obj.id)}</p>`}
 function list(id,items,type){const el=$(id);el.replaceChildren();for(const x of items){const row=document.createElement('div');row.className='item';const b=document.createElement('button');b.textContent=x.label;b.onclick=()=>inspect(type,x);const del=document.createElement('button');del.className='delete';del.textContent='×';del.title='Hapus';del.onclick=async()=>{if(!confirm(`Hapus ${x.label}?`))return;await api(`/api/${type}/${x.id}`,{method:'DELETE'});await refresh()};row.append(b,del);el.append(row)}}
 async function refresh(){S.graph=await api(`/api/graph?diagram=${S.diagram.id}`);S.segmentation=await api(`/api/segmentation?diagram=${S.diagram.id}`);$('segmentInfo').textContent=S.segmentation.run?`${S.segmentation.run.candidate_wire_segments}/${S.segmentation.run.raw_segments} candidate segments • ${S.segmentation.run.excluded_structural_segments} excluded • ${S.segmentation.run.remaining_ambiguous_crossings} crossings • 0 verified connections`:'Segmentation not built';S.associations=await api(`/api/associations?diagram=${S.diagram.id}`);S.terminalCandidates=await api(`/api/terminal-candidates?diagram=${S.diagram.id}`);renderTerminalCandidates();S.circleCandidates=await api(`/api/circle-candidates?diagram=${S.diagram.id}`);renderCircleCandidates();S.evidence=await api(`/api/evidence?diagram=${S.diagram.id}`);renderEvidence();S.independent=await api(`/api/independent-ocr?diagram=${S.diagram.id}`);renderIndependent();S.pathMatches=await api(`/api/path-matches?diagram=${S.diagram.id}`);renderPathMatches();S.fuseAudit=await api(`/api/fuse-audit?diagram=${S.diagram.id}`);renderFuseAudit();S.localOCR=await api(`/api/local-ocr?diagram=${S.diagram.id}`);renderLocalOCR();S.diagnostics=await api(`/api/match-diagnostics?diagram=${S.diagram.id}`);renderDiagnostics();S.continuity=await api(`/api/continuity-audit?diagram=${S.diagram.id}`);renderContinuity();S.targeted=await api(`/api/targeted-ocr?diagram=${S.diagram.id}`);renderTargeted();S.gapVisual=await api(`/api/gap-visual?diagram=${S.diagram.id}`);renderGapVisual();S.components=await api(`/api/components?diagram=${S.diagram.id}`);renderComponents();S.trace=await api(`/api/trace?diagram=${S.diagram.id}`);renderTrace();S.enhanced=await api(`/api/enhanced-trace?diagram=${S.diagram.id}`);renderEnhanced();S.corrected=await api(`/api/corrected-trace?diagram=${S.diagram.id}`);renderCorrected();S.branchesV0320=await api(`/api/branch-trace?diagram=${S.diagram.id}`);renderBranchTrace();S.terminalAccuracy=await api(`/api/terminal-accuracy?diagram=${S.diagram.id}`);renderTerminalAccuracy();S.selectedAssociation=null;renderAssociations();S.selectedEdge=null;renderGraph();S.auto=await api(`/api/auto-candidates?diagram=${S.diagram.id}`);const kinds={};for(const a of S.auto)kinds[a.kind]=(kinds[a.kind]||0)+1;$('autoInfo').textContent=`${S.auto.length} kandidat • ${Object.entries(kinds).map(([k,v])=>k+': '+v).join(', ')||'Belum ada'}. Tidak ada konektivitas otomatis terverifikasi.`;$('autoList').replaceChildren();for(const a of S.auto.filter(a=>a.kind==='ocr_connector'||a.kind==='ocr_fuse_label').slice(0,25)){const b=document.createElement('button');b.textContent=`${a.kind}: ${a.label} (${Math.round(a.confidence*100)}%)`;b.onclick=()=>inspect('machine candidate',{...a,notes:'Belum diverifikasi oleh teknisi'});$('autoList').append(b)}S.annotations=await api(`/api/annotations?diagram=${S.diagram.id}`);S.paths=await api(`/api/paths?diagram=${S.diagram.id}`);S.terminals=await api(`/api/terminals?diagram=${S.diagram.id}`);S.links=await api(`/api/circuit-links?diagram=${S.diagram.id}`);list('annotations',S.annotations,'annotations');list('paths',S.paths,'paths');renderMappings();draw();$('status').textContent=`${S.annotations.length} anotasi • ${S.paths.length} jalur (manual)`}
-async function change(){S.diagram=S.diagrams.find(d=>d.id===$('diagram').value);const img=$('diagramImg');img.src='/images/'+S.diagram.image_file;S.pending=[];fit();const decoded=typeof img.decode==='function'?img.decode():new Promise((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(new Error('Gambar tidak tersedia'));return;}img.addEventListener('load',resolve,{once:true});img.addEventListener('error',()=>reject(new Error('Gagal mengambil gambar')),{once:true});});const imagePromise=window.ActionProgress?window.ActionProgress.hold(decoded,'Menyiapkan gambar dan overlay diagram'):decoded;await Promise.all([refresh(),imagePromise]);draw()}
+async function change(){S.mvp={summary:null,circuits:[],review_queue:[]};S.selectedMvpFuse=null;renderMvp();S.diagram=S.diagrams.find(d=>d.id===$('diagram').value);
+const exampleOnly=S.diagram.id==='junction_block';
+$('loadMvp').disabled=!exampleOnly;
+$('buildTerminalAccuracy').disabled=!exampleOnly;
+$('buildBranchTrace').disabled=!exampleOnly;
+$('uploadInfo').textContent=exampleOnly
+  ? 'Junction Block example: saved six-fuse assisted review is available.'
+  : 'Uploaded/other diagram: manual mapping mode. Automated six-fuse inference is not available; please add annotations, manual paths, and terminals.';
+const img=$('diagramImg');img.src='/images/'+S.diagram.image_file;S.pending=[];fit();const decoded=typeof img.decode==='function'?img.decode():new Promise((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(new Error('Gambar tidak tersedia'));return;}img.addEventListener('load',resolve,{once:true});img.addEventListener('error',()=>reject(new Error('Gagal mengambil gambar')),{once:true});});const imagePromise=window.ActionProgress?window.ActionProgress.hold(decoded,'Menyiapkan gambar dan overlay diagram'):decoded;await Promise.all([refresh(),imagePromise]);draw()}
 function mode(m){S.mode=m;S.pending=[];document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));$('finish').hidden=m!=='path';$('cancel').hidden=m!=='path';$('viewport').style.cursor=m==='pan'?'grab':'crosshair';draw()}
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>mode(b.dataset.mode));$('search').oninput=draw;$('diagram').onchange=change;$('reset').onclick=fit;function zoom(f,at){const v=$('viewport');const x=at?.[0]??v.clientWidth/2,y=at?.[1]??v.clientHeight/2;const old=S.scale;S.scale=Math.min(8,Math.max(.08,old*f));S.tx=x-(x-S.tx)*S.scale/old;S.ty=y-(y-S.ty)*S.scale/old;renderTransform()};$('zin').onclick=()=>zoom(1.25);$('zout').onclick=()=>zoom(.8);$('viewport').onwheel=e=>{e.preventDefault();const r=$('viewport').getBoundingClientRect();zoom(e.deltaY<0?1.15:.87,[e.clientX-r.left,e.clientY-r.top])};
 $('viewport').onpointerdown=e=>{if(e.button!==0)return;if(S.mode==='pan'){S.drag={x:e.clientX,y:e.clientY,tx:S.tx,ty:S.ty};$('viewport').setPointerCapture(e.pointerId)}};$('viewport').onpointermove=e=>{if(S.drag){S.tx=S.drag.tx+e.clientX-S.drag.x;S.ty=S.drag.ty+e.clientY-S.drag.y;renderTransform()}};$('viewport').onpointerup=()=>S.drag=null;
@@ -773,4 +781,242 @@ $('exportTerminalAccuracy').onclick=()=>{
  const link=document.createElement('a');link.href=url;
  link.download='autowiring-'+S.diagram.id+'-terminal-accuracy-v0321.json';
  link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+
+
+// MVP 0.1 is a reviewer-facing snapshot of SAVED v0.3.20 + v0.3.21;
+// no OCR/graph/segmentation/trace builders are invoked from these controls.
+function mvpDestination(dest){
+ if(!dest)return 'unknown';
+ if(dest.kind==='off_page_continuation')return 'Continuation marker '+(dest.marker||'?')+' (NOT connector terminal)';
+ if(dest.number)return 'Terminal '+dest.number+' • '+dest.status;
+ const reference=dest.independent_visual_reference_not_ocr;
+ return 'Terminal ?'+(reference?' • source visual reference '+reference+' (NOT OCR)':'')+
+   ' • '+(dest.status||'needs review');
+}
+function renderMvp(){
+ const data=S.mvp||{},sum=data.summary;
+ const circuits=$('mvpCircuits'),queue=$('mvpReviewQueue');
+ circuits.replaceChildren();queue.replaceChildren();
+ for(const id of ['saveMvpSnapshot','exportMvpJson','exportMvpCsv'])$(id).disabled=!sum;
+ if(!sum){
+   $('mvpInfo').textContent=data.error
+      ? 'MVP report unavailable: '+data.error+' (past results were NOT reprocessed).'
+      : 'Click Load saved six-fuse MVP report. No OCR or graph stage will be repeated.';
+   return;
+ }
+ $('mvpInfo').textContent=sum.fuse_visual_candidates+' source-locked fuse candidates • '+
+   sum.visual_branch_candidates+' visual branches • '+sum.terminal_positions_reviewed_or_proposed+
+   ' candidate terminal positions • '+sum.disputed_terminals_remaining_visual_review+
+   ' of '+sum.disputed_terminal_positions+' disputed terminal numbers still need visual review • '+
+   sum.older_stages_rerun+' old stages rerun • 0 electrically verified connections • NOT diagnosis ready.';
+ for(const fuse of data.circuits){
+   const card=document.createElement('article');card.className='mvp-fuse-card'+
+     (S.selectedMvpFuse===fuse.fuse_label?' selected':'');
+   const head=document.createElement('button');head.className='mvp-fuse-head';
+   head.textContent=fuse.fuse_label+' • '+(fuse.rating_candidate||'?A')+' • '+
+     fuse.branches.length+' branch(es) • UNVERIFIED';
+   head.onclick=()=>{S.selectedMvpFuse=fuse.fuse_label;renderMvp();draw();
+     inspect('MVP visual-only fuse candidate',{label:fuse.fuse_label,
+       kind:'source-locked hypothesis',notes:JSON.stringify(fuse,null,2),verification:'unverified'})};
+   const main=document.createElement('p');main.className='mvp-route';
+   main.textContent='Main → '+mvpDestination(fuse.main?.destination);
+   card.append(head,main);
+   for(const br of fuse.branches){
+     const p=document.createElement('p');p.className='mvp-route branch';
+     p.textContent='↳ '+br.side+' → '+mvpDestination(br.destination)+
+       ' • '+(br.visual_review||'needs review');
+     card.append(p);
+   }
+   circuits.append(card);
+ }
+ const h=document.createElement('p');h.className='muted';
+ h.textContent='Empat nomor ini belum otomatis valid. Original crop dan hasil eksperimen circle-border removal hanya membantu pemeriksaan visual.';
+ queue.append(h);
+ for(const entry of data.review_queue){
+   const card=document.createElement('article');card.className='mvp-review-card';
+   const title=document.createElement('strong');
+   title.textContent=entry.fuse_label+' '+entry.path_kind+' • OCR '+
+     (entry.new_machine_ocr||entry.previous_machine_ocr||'?')+
+     ' vs visual reference '+entry.reference_number;
+   card.append(title);
+   const meta=document.createElement('p');meta.className='muted';
+   meta.textContent='Reference source: '+entry.reference_origin+
+     ' | '+entry.ocr_status+'. Visual reference is NOT verified OCR or an electrical pinout.';
+   card.append(meta);
+   const preview=entry.preview||null;
+   if(preview){
+     const pair=document.createElement('div');pair.className='mvp-glyph-pair';
+     for(const [value,label] of [[preview.original_png_base64,'Original circle'],
+           [preview.experimental_circle_border_suppression_png_base64,'Border-masked (experimental)']]){
+       const holder=document.createElement('div');
+       const img=document.createElement('img');img.src='data:image/png;base64,'+value;
+       img.alt=label+' from the same original image';img.className='mvp-glyph-img';
+       const caption=document.createElement('span');caption.textContent=label;
+       holder.append(img,caption);pair.append(holder);
+     }
+     card.append(pair);
+   }
+   const controls=document.createElement('div');controls.className='mvp-review-controls';
+   const status=document.createElement('select');
+   status.setAttribute('aria-label','Visual review '+entry.fuse_label+' '+entry.path_kind);
+   for(const [value,label] of [
+     ['needs_review','Not yet reviewed'],
+     ['visually_confirmed','Confirm number VISUALLY (not electrical)'],
+     ['rejected_ocr','Reject OCR / not readable']]){
+     const option=document.createElement('option');option.value=value;option.textContent=label;
+     status.append(option);
+   }
+   status.value=entry.human_visual_status||'needs_review';
+   const input=document.createElement('input');input.inputMode='numeric';input.maxLength=2;
+   input.pattern='[0-9]{1,2}';input.value=entry.manual_number||'';
+   input.placeholder='Your read: 1–39 (do not auto-fill reference)';
+   input.setAttribute('aria-label','Visual terminal number '+entry.fuse_label+' '+entry.path_kind);
+   const save=document.createElement('button');save.textContent='Save manual visual decision';
+   save.onclick=async()=>{
+     save.disabled=true;
+     try{
+       if(status.value==='visually_confirmed'&&!/^(?:[1-9]|[1-3][0-9])$/.test(input.value.trim()))
+         throw new Error('Enter a visually checked terminal number 1–39 before confirming.');
+       await api('/api/terminal-accuracy-review',{
+         method:'POST',headers:{'Content-Type':'application/json'},
+         body:JSON.stringify({diagram_id:S.diagram.id,path_key:entry.path_key,
+           review_status:status.value,manual_number:input.value.trim()||null})
+       });
+       S.mvp=await api('/api/mvp-report?diagram='+encodeURIComponent(S.diagram.id));
+       renderMvp();draw();await awaitMvpImagePreviews();
+       $('mvpInfo').textContent='Visual review saved • no previous OCR/analysis rerun • 0 electrically verified.';
+     }catch(error){
+       $('mvpInfo').textContent='Review failed: '+error.message;
+       window.ActionProgress?.reportError(error.message);save.disabled=false;
+     }
+   };
+   controls.append(status,input,save);card.append(controls);queue.append(card);
+ }
+}
+async function awaitMvpImagePreviews(){
+ const pictures=[...$('mvpReviewQueue').querySelectorAll('img')];
+ const decoding=pictures.map(img=>typeof img.decode==='function'
+    ? img.decode()
+    : new Promise((resolve,reject)=>{
+        if(img.complete)return img.naturalWidth?resolve():reject(new Error('Preview missing'));
+        img.addEventListener('load',resolve,{once:true});
+        img.addEventListener('error',()=>reject(new Error('Preview failed to load')),{once:true});
+      }));
+ const work=Promise.all(decoding);
+ return window.ActionProgress?
+   window.ActionProgress.hold(work,'Loading reviewed circle images on the diagram'):work;
+}
+$('layerMvp').onchange=draw;
+$('loadMvp').onclick=async()=>{
+ const button=$('loadMvp');button.disabled=true;
+ $('mvpInfo').textContent='Loading saved six-fuse review and four original image crops...';
+ try{
+   S.mvp=await api('/api/mvp-report?diagram='+encodeURIComponent(S.diagram.id));
+   $('layerTerminalAccuracy').checked=false;$('layerBranchTrace').checked=false;
+   $('layerCorrected').checked=false;$('layerEnhanced').checked=false;$('layerTrace').checked=false;
+   renderMvp();draw();await awaitMvpImagePreviews();
+ }catch(error){
+   S.mvp={summary:null,circuits:[],review_queue:[],error:error.message};
+   renderMvp();window.ActionProgress?.reportError(error.message);
+ }finally{button.disabled=false;}
+};
+function exportMvpFile(data,filename,type){
+ const url=URL.createObjectURL(new Blob([data],{type}));
+ const a=document.createElement('a');a.href=url;a.download=filename;a.click();
+ setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+$('exportMvpJson').onclick=()=>{
+ if(!S.mvp.summary)return;
+ exportMvpFile(JSON.stringify(S.mvp,null,2),'autowiring-'+S.diagram.id+
+   '-assisted-mvp-v0322.json','application/json');
+};
+$('exportMvpCsv').onclick=()=>{
+ if(!S.mvp.summary)return;
+ const rows=[['Fuse','Rating candidate','Path','Destination','Evidence status','Electrical verified']];
+ for(const fuse of S.mvp.circuits){
+   const d=fuse.main?.destination||{};
+   rows.push([fuse.fuse_label,fuse.rating_candidate||'','main',mvpDestination(d),
+              d.status||'unverified','NO']);
+   for(const branch of fuse.branches){
+     const b=branch.destination||{};
+     rows.push([fuse.fuse_label,fuse.rating_candidate||'',branch.kind,
+                mvpDestination(b),b.status||'visual_hypothesis','NO']);
+   }
+ }
+ const escapeCell=v=>{
+   const value=String(v==null?'':v);
+   // No spreadsheet-formula execution if a user-edited label is ever added.
+   const safe=/^[=+\-@\t\r]/.test(value)?"'"+value:value;
+   return '"'+safe.replace(/"/g,'""')+'"';
+ };
+ const csv='\uFEFF'+rows.map(row=>row.map(escapeCell).join(',')).join('\r\n');
+ exportMvpFile(csv,'autowiring-'+S.diagram.id+'-manual-review-checklist-v0322.csv',
+   'text/csv;charset=utf-8');
+};
+$('saveMvpSnapshot').onclick=async()=>{
+ const b=$('saveMvpSnapshot');b.disabled=true;
+ try{
+   const outcome=await api('/api/mvp-snapshot',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({diagram_id:S.diagram.id})
+   });
+   $('mvpInfo').textContent=(outcome.cache_hit?'Existing snapshot reused':'Immutable MVP snapshot saved')+
+     ' • ID '+outcome.snapshot_id.slice(0,12)+
+     ' • '+outcome.summary.disputed_terminals_remaining_visual_review+
+     ' review items still open • 0 electrical verified.';
+ }catch(error){$('mvpInfo').textContent='Snapshot failed: '+error.message;
+    window.ActionProgress?.reportError(error.message);
+ }finally{b.disabled=false;}
+};
+
+
+// MVP 0.1: other cars can be reviewed MANUALLY via uploaded images.
+// The sample-specific six-fuse automatic proposal is intentionally disabled
+// for a new image. This import does not run OCR or guess any connectivity.
+$('uploadDiagram').onclick=()=>{$('uploadDiagramFile').click()};
+$('uploadDiagramFile').onchange=async(event)=>{
+ const input=event.target,file=input.files?.[0];if(!file)return;
+ const msg=$('uploadInfo'),button=$('uploadDiagram');
+ button.disabled=true;
+ try{
+   if(file.size>8*1024*1024)throw new Error('Max 8 MB PNG/JPEG file.');
+   if(!['image/png','image/jpeg'].includes(file.type))throw new Error('Use PNG or JPEG.');
+   const suggested=file.name.replace(/\.(png|jpe?g)$/i,'').replace(/[_-]+/g,' ').trim();
+   const title=prompt('Diagram title:',suggested||'Wiring diagram');
+   if(title===null)return;
+   const vehicle=prompt('Vehicle / model (optional):','Not specified');
+   if(vehicle===null)return;
+   msg.textContent='Reading selected image locally...';
+   const readPromise=new Promise((resolve,reject)=>{
+     const reader=new FileReader();
+     reader.onload=()=>resolve(reader.result);
+     reader.onerror=()=>reject(new Error('Could not read image'));
+     reader.readAsDataURL(file);
+   });
+   const dataURL=window.ActionProgress?
+     await window.ActionProgress.hold(readPromise,'Reading locally selected diagram image'):
+     await readPromise;
+   msg.textContent='Saving diagram to local AutoWiring workspace...';
+   const result=await api('/api/diagram-upload',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({title:title.trim(),vehicle:vehicle.trim(),
+       image_base64:dataURL})
+   });
+   S.diagrams=await api('/api/diagrams');
+   const select=$('diagram');select.replaceChildren();
+   for(const d of S.diagrams){
+     const option=document.createElement('option');option.value=d.id;
+     option.textContent=d.title;select.append(option);
+   }
+   select.value=result.id;
+   await change();
+   msg.textContent='Imported: '+result.title+
+     ' • manual visual mapping only • no old OCR/graph steps rerun.';
+ }catch(error){
+   msg.textContent='Import failed: '+error.message;
+   window.ActionProgress?.reportError(error.message);
+ }finally{
+   button.disabled=false;input.value='';
+ }
 };
