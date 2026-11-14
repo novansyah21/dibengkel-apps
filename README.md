@@ -1,9 +1,7 @@
-# AutoWiring v0.3.12 — Split Fuse Association + Localized A/B OCR
+# AutoWiring v0.3.13 — Terminal Match Diagnostics
 
-Run `py viewer.py` then hard refresh http://127.0.0.1:8765.
+Run `py viewer.py` then hard-refresh http://127.0.0.1:8765.
 
-**To rebuild associations:** click **Find candidate circuits** again after upgrading. The updated association module now includes OCR-grounded split-token IG COIL labels from the fuse audit. Then click **Match fuse paths to OCR circles** again; existing v0.3.10 results are not retroactively modified.
+After **Find candidate circuits** and **OCR all detected circles**, click **Diagnose terminal matches**. Yellow markers show segment endpoints. The report lists OCR-circle alternatives for each fuse path, with normalized vertical offset, horizontal gap, OCR confidence, and exact rejection reasons. Export **diagnostic JSON** for inspection, especially unmatched IG COIL paths.
 
-**A/B CONT:** click **Scan A/B CONT (tile OCR)**. The backend performs overlapping-tile Tesseract OCR and displays green suggestions; inspect the image and export localized OCR JSON. Localized A/B OCR suggestions are NOT yet promoted to fuse associations. This deliberately avoids automatic false-positive wiring.
-
-All results are geometric/OCR hypotheses. No connector-pin mapping, junction verification, or electrical continuity is asserted. Back up output/autowiring.db. Tests: `py -m unittest discover -s tests -v`.
+This is intentionally a diagnostic-only release: it does not change path-matching thresholds, assert IG COIL→6, or increase verified connections. A/B CONT localized OCR remains experimental; v0.3.12 returned zero suggestions and is not claimed fixed. Run tests with `py -m unittest discover -s tests -v`.
