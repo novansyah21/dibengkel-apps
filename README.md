@@ -1,16 +1,9 @@
-# AutoWiring v0.3.9 — Endpoint-independent Circle OCR (Experimental)
+# AutoWiring v0.3.10 — Geometric Path-to-Terminal Candidates
 
-Run on Windows:
-```powershell
-py -m pip install -r requirements-auto.txt
-py viewer.py
-```
-Open http://127.0.0.1:8765 and hard refresh.
+Run: `py viewer.py`, then hard refresh http://127.0.0.1:8765.
 
-Workflow: run the v0.3.8 audit sequence, then click **OCR all detected circles (no endpoint filter)**. Toggle **Show independently read circles** to highlight purple candidates and export independent OCR JSON.
+After **Find candidate circuits** and **OCR all detected circles (no endpoint filter)**, click **Match fuse paths to OCR circles**. Cyan rings indicate geometric matches. Inspect candidates and export path match JSON.
 
-Unlike v0.3.8, this stage attempts OCR on **every** detected Hough circle, including the 86 previously marked too far from candidate endpoints. Results are stored in independent_runs_v039 and independent_circles_v039. This can take longer due to many Tesseract invocations.
+The matching algorithm compares the rightmost end of each candidate's existing horizontal segment group to independently OCR-read circles on approximately the same row. It rejects missing and near-tied alternatives. It does **not** infer connector identity, branches, crossings, or electrical continuity. All results are `geometric_candidate_unverified`. If zero matches appear, inspect exported JSON rather than forcing thresholds.
 
-**Important:** These numbers are UNASSOCIATED visual OCR readings, not fuse pinouts, reconstructed circuit paths, verified connector identities, or electrical continuity. False positives from fuse symbols or other circles remain possible. No sample source images are redistributed.
-
-Next planned: OCR crop preview, segment-to-circle matching and conservative multi-branch reconstruction. Back up output/autowiring.db before testing.
+Tables: `path_match_runs_v0310`, `path_matches_v0310`. Source images stay local in sample_assets. Back up output/autowiring.db before testing. Tests: `py -m unittest discover -s tests -v`.

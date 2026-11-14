@@ -15,3 +15,5 @@
 .evidence-rejected{stroke:#ff8c42;stroke-width:1.5;stroke-dasharray:4 3;fill:transparent;opacity:.7}
 
 .independent-read{stroke:#ad5bff;stroke-width:2.5;fill:rgba(173,91,255,.12);cursor:pointer}
+
+.path-match-circle{stroke:#12b8e8;stroke-width:3;fill:rgba(18,184,232,.1);cursor:pointer}
