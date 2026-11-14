@@ -1,10 +1,13 @@
-# AutoWiring v0.3.14 — Conservative Gap Audit + Targeted OCR
+# AutoWiring v0.3.15 — Visual Gap Inspection
 
-Run `py viewer.py`, hard refresh http://127.0.0.1:8765.
+Run `py viewer.py` and hard-refresh http://127.0.0.1:8765.
 
-1. Run **Find candidate circuits** (10 candidates expected from v0.3.12 data).
-2. Click **Audit collinear segment gaps**. Orange dashed lines show possible same-row gaps between nearby *candidate-wire* segments. These are suggestions only; the program does not merge them, cross junctions, or claim continuity.
-3. Click **Diagnose terminal matches**, then **OCR unmatched endpoints (raw)**. This performs small-crop OCR at 2×/4× scales and Tesseract PSM 6/11/12, preserving raw output for inspection.
-4. Export **gap audit JSON** and **raw OCR JSON** for next iteration.
+1. Run **Find candidate circuits**.
+2. Click **Audit collinear segment gaps** (v0.3.14).
+3. Click **Inspect gap image crops** (v0.3.15). The application displays original-diagram crop evidence with orange endpoint markers and a cyan row reference.
+4. Export **gap-visual JSON**. Compare all four recurring gaps (IG COIL, MTR, ABS, BACK) to determine whether the common gap represents a symbol, border, missing detection, or something else.
+5. To investigate terminal numbers, run **Diagnose terminal matches** then **OCR unmatched endpoints (raw)**.
 
-**Limitations:** No electrical verification, no inferred connector-pin mappings. The current OCR crop is endpoint-centered and may not cover A/B CONT; A/B OCR remains unresolved. Segment continuity is not established by collinearity alone. Tests: `py -m unittest discover -s tests -v`.
+Visual classification only distinguishes dark content from light gap; it **does not** recognize component symbols, prove segment continuity, merge paths, or assign terminal numbers. The IG COIL→6 and A/B CONT issues remain open. Electrically verified connections: **0**.
+
+Run tests: `py -m unittest discover -s tests -v`.
