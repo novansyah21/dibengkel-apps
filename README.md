@@ -1,60 +1,69 @@
-# AutoWiring v0.3.20 — Multi-Branch Circuit Tracing
+# AutoWiring v0.3.21 — Focused Terminal OCR & Loading Feedback
 
-**Fokus versi ini:** lanjut dari database v0.3.19 dan telusuri hipotesis jalur bercabang pada gambar Junction Block Suzuki SX4 yang sudah ada, tanpa mengulang OCR/segmentasi/analisis versi lama.
+Versi ini melanjutkan **hasil yang sudah tersimpan dari v0.3.20**, tanpa mengulang seluruh analisis diagram, deteksi lingkaran, fuse, graph maupun penelusuran jalur.
 
 ## Cara menjalankan (Windows)
 
-**Gunakan folder dan database yang sama**. Jangan menghapus output/autowiring.db maupun sample_assets.
+Tetap gunakan folder sebelumnya. **Jangan menghapus file output/autowiring.db atau gambar dalam sample_assets.**
 
 ~~~powershell
 cd D:\dibengkelapp\AutoWiring-v0.3.3
 git fetch origin
-git switch --track origin/feature/v0.3.20
+git switch --track origin/feature/v0.3.21
 py viewer.py
 ~~~
 
-Buka http://127.0.0.1:8765, lalu tekan **Ctrl + Shift + R** untuk memperbarui JavaScript dan CSS.
+Buka http://127.0.0.1:8765 dan tekan **Ctrl + Shift + R** agar loading.js/app.js baru digunakan.
 
-1. Pilih **Junction Block**.
-2. Klik tombol biru paling atas **▶ Continue saved analysis — 6 fuse & branches (v0.3.20)**.
-3. Periksa panel utama: enam kandidat fuse, main path (cyan), branch path (ungu), OCR terminal dan penanda continuation.
-4. Kalau perlu, gunakan **Save visual review** untuk menandai kecocokan **visual**. Review ini tidak memverifikasi koneksi listrik.
-5. Klik **Export v0.3.20 branches & evidence JSON**. Kirim **autowiring-junction_block-multi-branch-v0320.json** untuk evaluasi.
+Pilih **Junction Block**. Klik **▶ Refine 4 terminal OCR candidates (v0.3.21)** pada kartu biru paling atas. Tidak perlu klik tombol proses lama. Setelah hasil muncul, klik **Export v0.3.21 OCR & visual evidence JSON**. File keluarannya adalah **autowiring-junction_block-terminal-accuracy-v0321.json**.
 
-Tidak perlu klik ulang tahapan v0.3.16–v0.3.19 maupun tombol Automatic Analysis, segmentation, independent OCR atau Component Graph.
+## Perubahan penting
 
-## Kemampuan tambahan
+### A. Loading process saat klik tombol — seluruh aplikasi
 
-### 6 kandidat fuse dari gambar yang sama
+**Setiap tombol**, termasuk tombol-tombol legacy, sekarang memunculkan **indikator aktivitas di atas gambar diagram** segera saat diklik. Indikator memperlihatkan:
 
-Empat fuse (IG COIL, MTR, ABS, BACK) berasal dari run v0.3.19. Dua fuse **A/B dan IG1 SIG** ditambahkan melalui *source-locked visual anchor proposal* berdasarkan posisi label pada **gambar Junction Block yang sama persis**. Bukan klaim pendeteksi fuse generik atau inferensi tentang diagram kendaraan lain. Label/garis di posisi anchor dicocokkan ke piksel asli, rating kedua fuse dibaca menggunakan **targeted OCR baru hanya untuk dua row itu**. Semua tetap kandidat unverified.
+- Spinner dan garis gerak **indeterminate** (bukan persentase palsu).
+- Nama tombol/aksi yang sedang dijalankan.
+- Jumlah permintaan API yang sudah selesai serta yang masih berjalan.
+- Waktu proses yang benar-benar berlalu.
+- Menunggu file gambar **selesai di-decode** dan overlay terlukis sebelum menyatakan proses selesai.
+- Tanda **Selesai** atau **Gagal** setelah proses.
 
-Proses enam-fuse ini **dikunci ke SHA256 diagram sumber dan dimensi 1136×1598**. Jika gambar berbeda, aplikasi memberi pesan yang jelas dan tidak menerapkan koordinat dari diagram lain secara diam-diam.
+Ganti diagram, toggle layer dan simpan formulir juga menampilkan indikator. Proses berjalan ketika koneksi atau decode sedang aktif; kegiatan singkat tetap memberi feedback singkat. Banyak permintaan API berurutan dalam satu aksi tidak membuat spinner berkedip-kedip. Gagal memuat jaringan/gambar tidak ditandai sebagai sukses.
 
-### Branch-aware path proposals
+Di bawah ini semua adalah state UI saja, **bukan aktivitas OCR/graph tambahan**.
 
-- Mulai dari titik percabangan visual yang telah disimpan di v0.3.19; titik pada fuse baru ditinjau dari piksel asli secara lokal.
-- Melacak goresan vertikal ke atas/bawah, lalu berbelok ke horizontal jika garis berakhir dan mempunyai dukungan piksel yang konsisten.
-- **Tidak otomatis menyambung** garis yang hanya berpotongan; crossing tanpa dot tidak diartikan sebagai junction.
-- Nomor terminal menggunakan **lingkaran OCR tersimpan** dari v0.3.9 / v0.3.19. Hanya lingkaran yang sebelumnya unread pada cabang baru/terminal baru yang boleh di-OCR lagi secara **lokal**, disertai crop untuk review.
-- Jalur MTR yang menuju **kotak continuation 1** dibedakan dari terminal konektor nomor 1.
-- Header kolom konektor (E325, G271, G272, L313, L315) dipakai hanya sebagai **hint lokasi visual**; bukan bukti pinout.
+### B. Hanya empat terminal yang bermasalah
 
-### Idempotent cache
+Semua gambar crop diambil dari lingkaran yang **sudah tersimpan dalam SQLite v0.3.20**, tidak ada circle detection ulang.
 
-Fingerprint SQLite menggunakan ID run v0.3.19, ID OCR lingkaran, SHA256 gambar dan versi algoritma. Klik kedua kali dengan input sama menjadi **cache_hit=true** dan tidak melakukan OCR tambahan. Review visual manual hanya menulis tabel review sendiri.
+| Fuse | Posisi | Nomor lama | Pembacaan visual gambar spesifik ini |
+|---|---|---|---|
+| IG1 SIG | E325 main | unread | 12 |
+| IG1 SIG | G272 branch | unread | 16 |
+| ABS | L315 branch | unread | 6 |
+| BACK | G272 branch | 2 (suspect) | 8 |
 
-### Batas ketepatan
+Sistem melakukan **maksimum 3 preprocessing/PSM baru per lingkaran (12 total)**, dengan crop dan raw OCR log untuk pemeriksaan. Hanya menerima kandidat OCR jika minimal **dua variant independen sepakat**. Kalau OCR membaca angka berbeda, statusnya tetap **conflict**. OCR confidence bukan confidence hubungan listrik.
 
-**Semua hasil adalah VISUAL/GEOMETRIC HYPOTHESES.** Bahkan jika garis pada gambar, fuse symbol, junction dot dan lingkaran terminal terlihat menyambung, aplikasi **tidak** mengklaim ada hubungan listrik yang diverifikasi: **electrically_verified_connections = 0**.
+**Penting:** Kolom “pembacaan visual” ditranskripsi manusia setelah memeriksa **gambar Junction Block asli yang tepat sama**; itu merupakan **referensi manual**, **bukan keluaran OCR mesin** dan **bukan pinout yang diverifikasi secara elektrik**. Referensi ini hanya aktif apabila SHA256 gambar cocok dengan sampel asli (`c9954639ad0fb133cedbe6591fd75325b6517a06239f51b3069c285d2972fde5`) dan dimensinya **1136×1598**. Pada diagram lain, sistem berhenti dengan error jelas dan tidak berpura-pura mengenali nomor terminal.
 
-Gambar ini hanya satu contoh referensi, bukan general purpose wiring-netlist parser, dan vehicle applicability masih unverified. Jalur/fuse baru tidak boleh otomatis dikonversi ke hasil pemeriksaan teknisi tanpa validasi sumber dan konektivitas.
+### C. Visual review & cache
 
-## Otomatisasi pengujian
+Hasil empat lingkaran disimpan ke tabel terminal_accuracy_*_v0321 di database yang sama; data v0.3.16 sampai v0.3.20 **tidak diubah**. Klik kedua dengan image dan prior run sama menghasilkan **cache_hit=true**, tidak mengulang OCR baru maupun proses lama.
+
+Pengguna bisa memilih “visually confirmed” dan memasukkan nomor terminal manual untuk dirinya sendiri, tapi **tidak melakukan verifikasi konektivitas listrik**.
+
+Status kelistrikan tetap **electrically_verified_connections = 0**.
+
+## Pengujian otomatis
 
 ~~~powershell
 py -m pip install "Pillow>=10,<13"
 py -m unittest discover -s tests -p "test_*trac*.py" -v
+py -m unittest discover -s tests -p "test_terminal_accuracy.py" -v
+node --test tests/test_loading_progress.cjs
 ~~~
 
-GitHub Actions menjalankan Python syntax, JavaScript syntax, migrasi SQLite, uji fungsional diagram sintetis dengan crossing tanpa dot, belokan, terminal OCR, continuation dan cache. Uji akhir pada gambar sumber asli dilakukan di PC dengan database user, kemudian dievaluasi lewat JSON ekspor.
+GitHub Actions memeriksa compile Python, syntax JS, ketepatan empat target, konflik OCR, fingerprint cache, loading/holding gambar, route baru, dan tidak adanya pemanggilan tahapan lama dari tombol v0.3.21. Evaluasi efektivitas OCR pada gambar asli pengguna tetap dilakukan dari file JSON ekspor.
