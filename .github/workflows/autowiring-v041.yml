@@ -1,0 +1,36 @@
+name: AutoWiring v0.4.1 PDF source library
+on:
+  push:
+    branches: [feature/v0.4.1-source-library]
+  pull_request:
+    branches: [feature/v0.4.0-multivehicle-diagnostics]
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install "Pillow>=10,<13"
+      - run: python -m compileall -q viewer.py pdf_sources.py autowiring tests
+      - run: node --check web/app.js
+      - run: python -m unittest discover -s tests -p "test_pdf_library.py" -v
+      - run: python -m unittest discover -s tests -p "test_vehicle_diagnosis.py" -v
+      - run: python -m unittest discover -s tests -p "test_vehicle_api_http.py" -v
+      - run: python -m unittest discover -s tests -p "test_diagram_upload.py" -v
+      - name: Check PDF UI and safe routing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          ui=Path("web/index.html").read_text()
+          app=Path("web/app.js").read_text()
+          server=Path("viewer.py").read_text()
+          for name in ("refreshPdfLibrary","pdfLibraryStatus","pdfSourceList","pdfDocumentList"):
+              assert 'id="'+name+'"' in ui,name
+              assert name in app,name
+          for path in ("/api/pdf-sources","/api/pdf-library","/pdf-library/"):
+              assert path in server,path
+          print("PASS: PDF library UI and registered-file serving")
+          PY
