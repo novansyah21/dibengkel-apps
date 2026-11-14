@@ -15,7 +15,7 @@ $('buildBranchTrace').disabled=!exampleOnly;
 $('uploadInfo').textContent=exampleOnly
   ? 'Junction Block example: saved six-fuse assisted review is available.'
   : 'Uploaded/other diagram: manual mapping mode. Automated six-fuse inference is not available; please add annotations, manual paths, and terminals.';
-const img=$('diagramImg');img.src='/images/'+S.diagram.image_file;S.pending=[];fit();const decoded=typeof img.decode==='function'?img.decode():new Promise((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(new Error('Gambar tidak tersedia'));return;}img.addEventListener('load',resolve,{once:true});img.addEventListener('error',()=>reject(new Error('Gagal mengambil gambar')),{once:true});});const imagePromise=window.ActionProgress?window.ActionProgress.hold(decoded,'Menyiapkan gambar dan overlay diagram'):decoded;await Promise.all([refresh(),imagePromise,loadVehicleBinding()]);draw()}
+const img=$('diagramImg');img.src='/images/'+S.diagram.image_file;S.pending=[];fit();const decoded=typeof img.decode==='function'?img.decode():new Promise((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(new Error('Gambar tidak tersedia'));return;}img.addEventListener('load',resolve,{once:true});img.addEventListener('error',()=>reject(new Error('Gagal mengambil gambar')),{once:true});});const imagePromise=window.ActionProgress?window.ActionProgress.hold(decoded,'Menyiapkan gambar dan overlay diagram'):decoded;await Promise.all([refresh(),imagePromise,loadVehicleBinding(),loadPreviousUniversalScan()]);draw()}
 function mode(m){S.mode=m;S.pending=[];document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));$('finish').hidden=m!=='path';$('cancel').hidden=m!=='path';$('viewport').style.cursor=m==='pan'?'grab':'crosshair';draw()}
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>mode(b.dataset.mode));$('search').oninput=draw;$('diagram').onchange=change;$('reset').onclick=fit;function zoom(f,at){const v=$('viewport');const x=at?.[0]??v.clientWidth/2,y=at?.[1]??v.clientHeight/2;const old=S.scale;S.scale=Math.min(8,Math.max(.08,old*f));S.tx=x-(x-S.tx)*S.scale/old;S.ty=y-(y-S.ty)*S.scale/old;renderTransform()};$('zin').onclick=()=>zoom(1.25);$('zout').onclick=()=>zoom(.8);$('viewport').onwheel=e=>{e.preventDefault();const r=$('viewport').getBoundingClientRect();zoom(e.deltaY<0?1.15:.87,[e.clientX-r.left,e.clientY-r.top])};
 $('viewport').onpointerdown=e=>{if(e.button!==0)return;if(S.mode==='pan'){S.drag={x:e.clientX,y:e.clientY,tx:S.tx,ty:S.ty};$('viewport').setPointerCapture(e.pointerId)}};$('viewport').onpointermove=e=>{if(S.drag){S.tx=S.drag.tx+e.clientX-S.drag.x;S.ty=S.drag.ty+e.clientY-S.drag.y;renderTransform()}};$('viewport').onpointerup=()=>S.drag=null;
@@ -1151,6 +1151,10 @@ async function initDiagnosisOptions(){
    $('diagnosisSymptom').append($makeOption(id,label));
  for(const [id,label] of Object.entries(info.systems))
    $('diagnosisSystem').append($makeOption(id,label));
+}
+async function loadPreviousUniversalScan(){
+ S.universalScan=await api('/api/universal-scan?diagram='+encodeURIComponent(S.diagram.id));
+ showUniversalScan(S.universalScan);
 }
 function showUniversalScan(result){
  const root=$('universalScanResults');root.replaceChildren();
