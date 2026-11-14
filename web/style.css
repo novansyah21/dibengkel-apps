@@ -23,3 +23,5 @@
 .local-ocr-box{stroke:#42d67a;stroke-width:3;fill:rgba(66,214,122,.16);cursor:pointer}
 
 .diagnostic-endpoint{stroke:#f2ce45;stroke-width:3;fill:rgba(242,206,69,.35);cursor:pointer}
+
+.continuity-gap{stroke:#f39c35;stroke-width:3;stroke-dasharray:5 5;pointer-events:none}
