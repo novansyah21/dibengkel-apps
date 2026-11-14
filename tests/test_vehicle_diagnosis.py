@@ -29,7 +29,7 @@ class VehicleCatalogTests(unittest.TestCase):
         self.assertIn("SX4",{m["name"] for m in models})
         self.assertIn("Hatchback",{m["body_type"] for m in models})
         self.assertIn("SUV",c["vehicle_types"])
-        self.assertIn("not an exhaustive",c["origin_notice"])
+        self.assertIn("not an exhaustive",c["origin_notice"].lower())
         wuling=brands["Wuling"]["id"]
         self.assertIn("Air ev",{m["name"] for m in c["models"] if m["brand_id"]==wuling})
     def test_vehicle_model_must_belong_to_selected_brand(self):
