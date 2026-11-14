@@ -1,5 +1,6 @@
 """v0.3.5: evidence-linked candidate circuits. Never infer verified connectivity."""
 import json,math,re,sqlite3,uuid
+from autowiring.fuse_audit import audit as audit_fuses,canonical
 SCHEMA="""
 CREATE TABLE IF NOT EXISTS association_runs_v035(id TEXT PRIMARY KEY,diagram_id TEXT NOT NULL,segment_run_id TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP,summary_json TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS association_candidates_v035(id TEXT PRIMARY KEY,run_id TEXT NOT NULL,diagram_id TEXT NOT NULL,label_id TEXT NOT NULL,label TEXT NOT NULL,kind TEXT NOT NULL,edge_ids_json TEXT NOT NULL,terminal_text TEXT,terminal_candidate_id TEXT,terminal_distance REAL,score REAL NOT NULL,reason TEXT NOT NULL,verification TEXT NOT NULL DEFAULT 'visual_proximity_unverified');
@@ -50,7 +51,15 @@ def build(dbpath,diagram_id):
   gr=db.execute('SELECT source_run_id FROM graph_runs_v033 WHERE id=?',(run['graph_run_id'],)).fetchone()
   if not gr:raise ValueError('Source graph run missing')
   labels=[dict(c) for c in db.execute('SELECT * FROM auto_candidates_v032 WHERE run_id=?',(gr['source_run_id'],))]
-  found=candidates(labels,edges);rid=uuid.uuid4().hex
+  found=candidates(labels,edges)
+  existing={(canonical(x['label']),tuple(x['edge_ids'])) for x in found}
+  for item in audit_fuses(labels,edges,[]):
+   if item['status']!='missing_association_candidate' or not item['edge_ids']:continue
+   key=(item['label'],tuple(item['edge_ids']))
+   if key in existing:continue
+   found.append(dict(label_id='audit:'+item['label']+':'+str(round(item['x'],5))+':'+str(round(item['y'],5)),label=item['label'],kind='ocr_fuse_label_reconstructed',edge_ids=item['edge_ids'],terminal_text=None,terminal_candidate_id=None,terminal_distance=None,score=.35,reason='v0.3.12 OCR token reconstruction; proximity-only; no electrical continuity.'))
+   existing.add(key)
+  rid=uuid.uuid4().hex
   summary=dict(candidate_circuits=len(found),terminal_text_candidates=sum(bool(c['terminal_text']) for c in found),electrically_verified_connections=0,note='No electrical continuity, terminal pin, or vehicle applicability verified.')
   db.execute('INSERT INTO association_runs_v035(id,diagram_id,segment_run_id,summary_json) VALUES(?,?,?,?)',(rid,diagram_id,run['id'],json.dumps(summary)))
   db.executemany('INSERT INTO association_candidates_v035(id,run_id,diagram_id,label_id,label,kind,edge_ids_json,terminal_text,terminal_candidate_id,terminal_distance,score,reason) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',[(uuid.uuid4().hex,rid,diagram_id,c['label_id'],c['label'],c['kind'],json.dumps(c['edge_ids']),c['terminal_text'],c['terminal_candidate_id'],c['terminal_distance'],c['score'],c['reason']) for c in found])
