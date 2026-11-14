@@ -27,3 +27,22 @@
 .continuity-gap{stroke:#f39c35;stroke-width:3;stroke-dasharray:5 5;pointer-events:none}
 
 .component-candidate{fill:#ffbd59;stroke:#573a0a;stroke-width:2;cursor:pointer}
+
+
+/* v0.3.17: emphasize the one-click resumable workflow; all traces are unverified. */
+.smarttrace{background:#203852;border:1px solid #3c729c;border-radius:10px;padding:12px;margin:12px 0}
+.smarttrace h3{margin:0 0 6px;color:#bceaff}
+.smarttrace p{font-size:12px;line-height:1.45}
+.primary-action{width:100%;padding:12px 8px;background:#155e83!important;color:white!important;font-weight:700}
+#traceInfo{margin:10px 0;line-height:1.55;font-size:12px;overflow-wrap:anywhere}
+#traceList{max-height:430px;overflow-y:auto}
+.trace-review-card{padding:8px 7px;border:1px solid #456582;background:#1a2c42;border-radius:8px;margin:7px 0}
+.trace-review-card.focused{outline:2px solid #f8d272}
+.trace-review-focus{display:block;width:100%;font-weight:600;text-align:left;white-space:normal;line-height:1.35}
+.trace-review-card .muted{padding:5px 0;font-size:11px;overflow-wrap:anywhere}
+.trace-preview{display:block;max-width:100%;margin:5px 0;image-rendering:pixelated}
+.trace-review-controls{display:flex;flex-direction:column;gap:5px}
+.trace-review-controls select,.trace-review-controls button{width:100%}
+.smart-trace-line{fill:none;stroke:#e89b37;stroke-width:4;stroke-dasharray:10 7;opacity:.85;cursor:pointer;pointer-events:stroke}
+.smart-trace-selected{stroke:#fcee73!important;stroke-width:7!important;opacity:1}
+.smart-trace-terminal{stroke:#ef952a;stroke-width:3;fill:rgba(255,180,0,.12);pointer-events:none}
