@@ -1,69 +1,78 @@
-# AutoWiring v0.3.21 — Focused Terminal OCR & Loading Feedback
+# AutoWiring MVP 0.1 — Assisted Wiring Review (v0.3.22)
 
-Versi ini melanjutkan **hasil yang sudah tersimpan dari v0.3.20**, tanpa mengulang seluruh analisis diagram, deteksi lingkaran, fuse, graph maupun penelusuran jalur.
+**Status: MVP review-assist untuk satu gambar Junction Block. Bukan diagnostic assistant otomatis.**
 
-## Cara menjalankan (Windows)
+Setelah pengujian v0.3.21, keempat nomor terminal bermasalah masih **0/4 lolos OCR consensus**. Menaikkan confidence atau memaksakan nomor dari referensi manusia akan menyembunyikan kesalahan. Eksperimen lokal circle-border suppression memperjelas bentuk angka pada beberapa crop tetapi juga **menghapus sebagian guratan digit**, sehingga **bukan pengenal angka yang tervalidasi**. v0.3.22 menyediakan tampilan original vs masked untuk **pemeriksaan manusia**, tanpa menyebutnya machine recognition.
 
-Tetap gunakan folder sebelumnya. **Jangan menghapus file output/autowiring.db atau gambar dalam sample_assets.**
+## Jalankan di Windows — tetap dengan database lama
+
+**Jangan menghapus folder output atau file output/autowiring.db.** Semua hasil sebelumnya disimpan di sana. Pastikan gambar Junction Block sumber tetap ada di sample_assets.
 
 ~~~powershell
 cd D:\dibengkelapp\AutoWiring-v0.3.3
 git fetch origin
-git switch --track origin/feature/v0.3.21
+git switch --track origin/feature/v0.3.22-mvp
 py viewer.py
 ~~~
 
-Buka http://127.0.0.1:8765 dan tekan **Ctrl + Shift + R** agar loading.js/app.js baru digunakan.
+Buka **http://127.0.0.1:8765**, kemudian tekan **Ctrl + Shift + R** sekali.
 
-Pilih **Junction Block**. Klik **▶ Refine 4 terminal OCR candidates (v0.3.21)** pada kartu biru paling atas. Tidak perlu klik tombol proses lama. Setelah hasil muncul, klik **Export v0.3.21 OCR & visual evidence JSON**. File keluarannya adalah **autowiring-junction_block-terminal-accuracy-v0321.json**.
+## Cara pakai MVP
 
-## Perubahan penting
+1. Pilih **Junction Block**.
+2. Klik tombol hijau/biru **▶ Load saved six-fuse MVP report** di bagian paling atas.
+3. Tinjau **6 kandidat fuse**, rating, jalur utama, 5 cabang/continuation dan tanda putus-putus pada gambar.
+4. Di bagian **4 terminal requiring manual visual review**, bandingkan gambar lingkaran asli dan gambar experimental border mask. Masukkan **nomor yang lu lihat sendiri**, pilih **Confirm number VISUALLY**, lalu **Save manual visual decision**. Jangan mengisi nomor hanya karena visual reference menunjukkan angka tertentu jika belum diperiksa.
+5. Gunakan **Save audit snapshot** untuk menyimpan hasil saat ini (idempotent, tidak membuat salinan baru jika review tidak berubah).
+6. **Export MVP review JSON** atau **Export wiring checklist CSV**. Bagikan file JSON untuk evaluasi berikutnya.
 
-### A. Loading process saat klik tombol — seluruh aplikasi
+Semua tombol, termasuk tombol analisis lama, tetap menampilkan **spinner/loading di atas gambar**, penghitung request yang selesai/belum, waktu berjalan, dan notifikasi selesai/gagal. **Tidak ada persentase palsu.**
 
-**Setiap tombol**, termasuk tombol-tombol legacy, sekarang memunculkan **indikator aktivitas di atas gambar diagram** segera saat diklik. Indikator memperlihatkan:
+## Cakupan MVP yang faktual
 
-- Spinner dan garis gerak **indeterminate** (bukan persentase palsu).
-- Nama tombol/aksi yang sedang dijalankan.
-- Jumlah permintaan API yang sudah selesai serta yang masih berjalan.
-- Waktu proses yang benar-benar berlalu.
-- Menunggu file gambar **selesai di-decode** dan overlay terlukis sebelum menyatakan proses selesai.
-- Tanda **Selesai** atau **Gagal** setelah proses.
+| Kemampuan | Status |
+|---|---|
+| Viewer/zoom/pan/annotation | Ada |
+| Kandidat fuse pada gambar Junction Block tertentu | 6 (source-locked, tidak generik) |
+| Rating kandidat | 6 |
+| Kandidat main path | 6 |
+| Kandidat cabang/continuation | 5, termasuk satu off-page continuation |
+| Terminal visual reference yang butuh review | 4 |
+| OCR otomatis baru yang lolos v0.3.21 | 0/4 |
+| Elektrikal continuity yang diverifikasi | **0** |
+| Diagnosis otomatis / dukungan diagram kendaraan lain | **Tidak tersedia** |
 
-Ganti diagram, toggle layer dan simpan formulir juga menampilkan indikator. Proses berjalan ketika koneksi atau decode sedang aktif; kegiatan singkat tetap memberi feedback singkat. Banyak permintaan API berurutan dalam satu aksi tidak membuat spinner berkedip-kedip. Gagal memuat jaringan/gambar tidak ditandai sebagai sukses.
+Berikut **empat nomor yang tampil sebagai referensi visual manusia, BUKAN machine OCR**:
 
-Di bawah ini semua adalah state UI saja, **bukan aktivitas OCR/graph tambahan**.
+- IG1 SIG main: E325 / **12**
+- IG1 SIG branch: G272 / **16**
+- ABS branch: L315 / **6**
+- BACK branch: G272 / **8** (mesin sebelumnya membaca **2**, yang tidak boleh otomatis dianggap benar)
 
-### B. Hanya empat terminal yang bermasalah
+Laporan tidak diam-diam mengubah angka mesin dari 2 menjadi 8. Sebelum review, nomor efektif untuk empat target masih **unknown**, dan referensi visual disimpan di kolom terpisah. Ketika pengguna mengonfirmasi, status menjadi **human_visual_review_only** — **bukan electrically verified**.
 
-Semua gambar crop diambil dari lingkaran yang **sudah tersimpan dalam SQLite v0.3.20**, tidak ada circle detection ulang.
+## Apa arti tombol "Save audit snapshot"?
 
-| Fuse | Posisi | Nomor lama | Pembacaan visual gambar spesifik ini |
-|---|---|---|---|
-| IG1 SIG | E325 main | unread | 12 |
-| IG1 SIG | G272 branch | unread | 16 |
-| ABS | L315 branch | unread | 6 |
-| BACK | G272 branch | 2 (suspect) | 8 |
+Menyimpan salinan immutable laporan review di tabel SQLite mvp_snapshots_v0322, termasuk ID run v0.3.20 dan v0.3.21, SHA gambar, keputusan manual, kandidat fuse, dan status bukti. Bila tidak ada keputusan baru, fingerprint menghasilkan cache hit dan tidak menambah snapshot duplikat. OCR/graph/segmentation/branch tracing **tidak diulang**.
 
-Sistem melakukan **maksimum 3 preprocessing/PSM baru per lingkaran (12 total)**, dengan crop dan raw OCR log untuk pemeriksaan. Hanya menerima kandidat OCR jika minimal **dua variant independen sepakat**. Kalau OCR membaca angka berbeda, statusnya tetap **conflict**. OCR confidence bukan confidence hubungan listrik.
+CSV sengaja menampilkan kolom **Electrical verified: NO** untuk seluruh baris.
 
-**Penting:** Kolom “pembacaan visual” ditranskripsi manusia setelah memeriksa **gambar Junction Block asli yang tepat sama**; itu merupakan **referensi manual**, **bukan keluaran OCR mesin** dan **bukan pinout yang diverifikasi secara elektrik**. Referensi ini hanya aktif apabila SHA256 gambar cocok dengan sampel asli (`c9954639ad0fb133cedbe6591fd75325b6517a06239f51b3069c285d2972fde5`) dan dimensinya **1136×1598**. Pada diagram lain, sistem berhenti dengan error jelas dan tidak berpura-pura mengenali nomor terminal.
+## Batas keandalan dan acceptance gate
 
-### C. Visual review & cache
+**MVP ini layak hanya sebagai aplikasi pendamping review visual pada satu diagram sampel dengan supervisi manusia.** Tidak layak sebagai netlist elektrik otomatis, rekomendasi penggantian komponen, atau dasar tindakan pada kendaraan.
 
-Hasil empat lingkaran disimpan ke tabel terminal_accuracy_*_v0321 di database yang sama; data v0.3.16 sampai v0.3.20 **tidak diubah**. Klik kedua dengan image dan prior run sama menghasilkan **cache_hit=true**, tidak mengulang OCR baru maupun proses lama.
+Untuk menyatakan satu wiring diagram lain didukung, perlu benchmark terpisah terhadap gambar baru: identifikasi komponen, deteksi percabangan, nomor terminal, kelengkapan jalur, *false joins*, dan validasi oleh teknisi. Contoh ini memakai source-locked layout anchors, sehingga **tidak dapat diklaim digeneralisasi**.
 
-Pengguna bisa memilih “visually confirmed” dan memasukkan nomor terminal manual untuk dirinya sendiri, tapi **tidak melakukan verifikasi konektivitas listrik**.
+Pengguna dapat menyelesaikan empat review visual sehingga laporan menyatakan "assisted_visual_review_ready". Status **diagnostic_ready tetap false** dan **electrically_verified_connections tetap 0**.
 
-Status kelistrikan tetap **electrically_verified_connections = 0**.
-
-## Pengujian otomatis
+## Testing
 
 ~~~powershell
 py -m pip install "Pillow>=10,<13"
 py -m unittest discover -s tests -p "test_*trac*.py" -v
 py -m unittest discover -s tests -p "test_terminal_accuracy.py" -v
+py -m unittest discover -s tests -p "test_mvp_review.py" -v
 node --test tests/test_loading_progress.cjs
 ~~~
 
-GitHub Actions memeriksa compile Python, syntax JS, ketepatan empat target, konflik OCR, fingerprint cache, loading/holding gambar, route baru, dan tidak adanya pemanggilan tahapan lama dari tombol v0.3.21. Evaluasi efektivitas OCR pada gambar asli pengguna tetap dilakukan dari file JSON ekspor.
+GitHub Actions menjalankan regresi seluruh versi sebelumnya dan tes tambahan untuk snapshot, manual overrides, source lock, konflik OCR historis dan indikator loading. Hasil runtime yang diharapkan untuk evaluasi adalah **autowiring-junction_block-assisted-mvp-v0322.json**.
