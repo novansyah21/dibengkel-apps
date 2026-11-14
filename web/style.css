@@ -17,3 +17,5 @@
 .independent-read{stroke:#ad5bff;stroke-width:2.5;fill:rgba(173,91,255,.12);cursor:pointer}
 
 .path-match-circle{stroke:#12b8e8;stroke-width:3;fill:rgba(18,184,232,.1);cursor:pointer}
+
+.fuse-audit-label{stroke:#ff9e00;stroke-width:3;fill:rgba(255,158,0,.2);cursor:pointer}.fuse-audit-edge{stroke:#ff9e00;stroke-width:3;stroke-dasharray:7 5;pointer-events:none}
