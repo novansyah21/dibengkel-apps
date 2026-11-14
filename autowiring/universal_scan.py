@@ -47,8 +47,8 @@ def latest(dbpath,diagram_id):
         db.row_factory=sqlite3.Row
         db.executescript(AUTO_SCHEMA+SCHEMA)
         row=_last(db,diagram_id)
-        if not row:return {"run":None,"candidates":[]}
-        return {"run":_result(db,row,True),"candidates":[]}
+        if not row:return {"scan_id":None,"summary":None,"candidates":[]}
+        return _result(db,dict(row),True)
 
 def scan(dbpath,diagram_id,image_path):
     p=Path(image_path)
