@@ -1,13 +1,11 @@
-# AutoWiring v0.3.15 — Visual Gap Inspection
+# AutoWiring v0.3.16 — Component-aware fuse hypotheses
 
-Run `py viewer.py` and hard-refresh http://127.0.0.1:8765.
+Run `py viewer.py` and refresh http://127.0.0.1:8765.
 
-1. Run **Find candidate circuits**.
-2. Click **Audit collinear segment gaps** (v0.3.14).
-3. Click **Inspect gap image crops** (v0.3.15). The application displays original-diagram crop evidence with orange endpoint markers and a cyan row reference.
-4. Export **gap-visual JSON**. Compare all four recurring gaps (IG COIL, MTR, ABS, BACK) to determine whether the common gap represents a symbol, border, missing detection, or something else.
-5. To investigate terminal numbers, run **Diagnose terminal matches** then **OCR unmatched endpoints (raw)**.
+Sequence: **Find candidate circuits** → **Audit collinear segment gaps** → **Inspect gap image crops** → **Identify fuse component candidates**. Click a candidate for a graph preview or export **component-graph JSON**.
 
-Visual classification only distinguishes dark content from light gap; it **does not** recognize component symbols, prove segment continuity, merge paths, or assign terminal numbers. The IG COIL→6 and A/B CONT issues remain open. Electrically verified connections: **0**.
+Candidate graph is `source_wire -> fuse_symbol_candidate -> target_wire`. No direct wire-to-wire joins, no electrical verification, no fuse-rating OCR claim, and no automatic terminal assignment. This is a **rule-based candidate** based on fuse-associated gaps and image ink, not a trained symbol classifier. Inspect each image crop manually before treating the component type as confirmed.
 
-Run tests: `py -m unittest discover -s tests -v`.
+Audit buttons now write compact summaries to the status bar instead of showing raw JSON alerts. Other legacy analysis buttons may still show alerts.
+
+Tests: `py -m unittest discover -s tests -v`.
