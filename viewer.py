@@ -1,4 +1,4 @@
-"""AutoWiring v0.3.22 MVP-assisted interactive diagram review server (stdlib)."""
+"""AutoWiring v0.4.0 multi-vehicle diagnostic beta interactive diagram review server (stdlib)."""
 import argparse,json,mimetypes,sqlite3,shutil,uuid,re
 from pathlib import Path
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
@@ -29,6 +29,13 @@ from autowiring.branch_tracing import SCHEMA as BRANCH_SCHEMA,build as build_bra
 from autowiring.terminal_accuracy import SCHEMA as ACCURACY_SCHEMA,build as build_terminal_accuracy,latest as latest_terminal_accuracy,review as review_terminal_accuracy
 from autowiring.mvp_review import SCHEMA as MVP_SCHEMA,assemble as mvp_report,snapshot as mvp_snapshot,snapshots as mvp_snapshots
 from autowiring.diagram_upload import upload as upload_diagram
+from autowiring.vehicle_catalog import (SCHEMA as VEHICLE_SCHEMA,seed as seed_vehicles,catalog as vehicle_catalog,
+    add_model as add_vehicle_model,save_profile as save_vehicle_profile,
+    profiles as vehicle_profiles,binding as vehicle_binding,bind as bind_vehicle)
+from autowiring.diagnosis_rules import (SCHEMA as DIAGNOSE_SCHEMA,run as diagnose_vehicle,
+    history as diagnosis_history,SYMPTOMS as DIAGNOSIS_SYMPTOMS,SYSTEMS as DIAGNOSIS_SYSTEMS)
+from autowiring.universal_scan import (SCHEMA as UNIVERSAL_SCHEMA,scan as generic_scan,
+    latest as latest_generic_scan)
 
 ROOT=Path(__file__).resolve().parent
 SCHEMA="""
@@ -41,10 +48,11 @@ CREATE TABLE IF NOT EXISTS viewer_circuit_links(id TEXT PRIMARY KEY,diagram_id T
 SEEDS=[('junction_block','Junction Block — fuse and terminal map','c9954639ad0fb133cedb.png',1136,1598),('abbreviations','Abbreviation reference','17ba65f18296c7320c58.png',640,316),('bcm_wiring','BCM internal wiring / harness','a6c3c83161c162401c88.png',1248,1512)]
 
 def setup(db):
- db.executescript(SCHEMA + AUTO_SCHEMA + GRAPH_SCHEMA + SEG_SCHEMA + ASSOC_SCHEMA + TERMINAL_SCHEMA + CIRCLE_SCHEMA + EVIDENCE_SCHEMA + INDEPENDENT_SCHEMA + PATHMATCH_SCHEMA + FUSE_AUDIT_SCHEMA + LOCAL_OCR_SCHEMA + DIAG_SCHEMA + CONT_SCHEMA + TARGET_SCHEMA + VISUAL_SCHEMA + COMPONENT_SCHEMA + TRACE_SCHEMA + ENHANCED_SCHEMA + CORRECTED_SCHEMA + BRANCH_SCHEMA + ACCURACY_SCHEMA + MVP_SCHEMA)
+ db.executescript(SCHEMA + AUTO_SCHEMA + GRAPH_SCHEMA + SEG_SCHEMA + ASSOC_SCHEMA + TERMINAL_SCHEMA + CIRCLE_SCHEMA + EVIDENCE_SCHEMA + INDEPENDENT_SCHEMA + PATHMATCH_SCHEMA + FUSE_AUDIT_SCHEMA + LOCAL_OCR_SCHEMA + DIAG_SCHEMA + CONT_SCHEMA + TARGET_SCHEMA + VISUAL_SCHEMA + COMPONENT_SCHEMA + TRACE_SCHEMA + ENHANCED_SCHEMA + CORRECTED_SCHEMA + BRANCH_SCHEMA + ACCURACY_SCHEMA + MVP_SCHEMA + VEHICLE_SCHEMA + DIAGNOSE_SCHEMA + UNIVERSAL_SCHEMA)
  for id,title,file,w,h in SEEDS:
   db.execute('INSERT OR IGNORE INTO viewer_diagrams(id,title,image_file,width,height,source_url,vehicle) VALUES(?,?,?,?,?,?,?)',(id,title,file,w,h,'https://charm.li/','Suzuki SX4 2007 2WD L4-2.0L (source context, unverified)'))
  db.commit()
+ seed_vehicles(db)
 
 def validate_point(x):
  x=float(x)
@@ -63,6 +71,25 @@ def run(port,dbpath):
     return [dict(x) for x in db.execute(sql,args)]
   def do_GET(self):
    url=urlparse(self.path);p=url.path
+   if p=='/api/vehicle-catalog':
+    return self.send(200,vehicle_catalog(dbpath))
+   if p=='/api/vehicle-profiles':
+    return self.send(200,vehicle_profiles(dbpath))
+   if p=='/api/vehicle-binding':
+    d=parse_qs(url.query).get('diagram',[''])[0]
+    return self.send(200,vehicle_binding(dbpath,d))
+   if p=='/api/diagnosis-options':
+    return self.send(200,{'symptoms':DIAGNOSIS_SYMPTOMS,
+                          'systems':DIAGNOSIS_SYSTEMS,
+                          'measurements':['battery_voltage_off_v','fuse_input_v',
+                                          'fuse_output_v','load_feed_v',
+                                          'ground_voltage_drop_v']})
+   if p=='/api/diagnosis-history':
+    d=parse_qs(url.query).get('diagram',[''])[0]
+    return self.send(200,diagnosis_history(dbpath,d))
+   if p=='/api/universal-scan':
+    d=parse_qs(url.query).get('diagram',[''])[0]
+    return self.send(200,latest_generic_scan(dbpath,d))
    if p=='/api/mvp-report':
     d=parse_qs(url.query).get('diagram',[''])[0]
     info=self.query('SELECT image_file FROM viewer_diagrams WHERE id=?',(d,))
@@ -178,10 +205,26 @@ def run(port,dbpath):
   def do_POST(self):
    try:
     p=urlparse(self.path).path;v=self.body()
+    if p=='/api/vehicle-model-add':
+     return self.send(201,add_vehicle_model(dbpath,v))
+    if p=='/api/vehicle-profile':
+     return self.send(201,save_vehicle_profile(dbpath,v))
     if p=='/api/diagram-upload':
-     return self.send(201,upload_diagram(dbpath,ROOT/'sample_assets',v))
+     pid=v.get('vehicle_profile_id')
+     if pid and not any(q['id']==pid for q in vehicle_profiles(dbpath)):
+      raise ValueError('Vehicle profile does not exist')
+     uploaded=upload_diagram(dbpath,ROOT/'sample_assets',v)
+     if pid:bind_vehicle(dbpath,uploaded['id'],pid)
+     return self.send(201,uploaded)
     diagram=v.get('diagram_id','')
     if not self.query('SELECT id FROM viewer_diagrams WHERE id=?',(diagram,)):raise ValueError('unknown diagram')
+    if p=='/api/diagram-vehicle-bind':
+     return self.send(200,bind_vehicle(dbpath,diagram,str(v.get('profile_id',''))))
+    if p=='/api/universal-scan-build':
+     info=self.query('SELECT image_file FROM viewer_diagrams WHERE id=?',(diagram,))[0]
+     return self.send(200,generic_scan(dbpath,diagram,ROOT/'sample_assets'/info['image_file']))
+    if p=='/api/diagnose':
+     return self.send(200,diagnose_vehicle(dbpath,diagram,v))
     if p=='/api/mvp-snapshot':
      info=self.query('SELECT image_file FROM viewer_diagrams WHERE id=?',(diagram,))[0]
      return self.send(200,mvp_snapshot(dbpath,diagram,ROOT/'sample_assets'/info['image_file']))
@@ -297,7 +340,7 @@ def run(port,dbpath):
     try:cursor=db.execute(f'DELETE FROM {table} WHERE id=?',(p[3],));db.commit()
     except sqlite3.IntegrityError:return self.send(409,{'error':'Item is referenced by terminals or circuit links; delete references first'})
    return self.send(200,{'deleted':cursor.rowcount})
- print(f'AutoWiring v0.3.22 MVP at http://127.0.0.1:{port} | DB: {dbpath}')
+ print(f'AutoWiring v0.4.0 beta at http://127.0.0.1:{port} | DB: {dbpath}')
  ThreadingHTTPServer(('127.0.0.1',port),Handler).serve_forever()
 
 if __name__=='__main__':
