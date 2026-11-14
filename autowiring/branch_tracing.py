@@ -313,7 +313,7 @@ def build(dbpath,diagram_id,image_path,reader=None,rating_reader=None):
             dot_total+=len(dots);branch_total+=len(branches)
             ratings+=bool(rating)
             terminal_leads+=bool(term.get("number"))
-            terminal_leads+=sum(bool(b.get("terminal",{}).get("number")) for b in branches)
+            terminal_leads+=sum(bool((b.get("terminal") or {}).get("number")) for b in branches)
             geom={"image_sha256":source_hash,"fuse_y_px":row,
                   "seed_y_px":seed_y,"line_anchor_strength":strength,
                   "waveform":{"status":"reused_v0319" if old_item else
