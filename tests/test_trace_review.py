@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from autowiring.trace_review import (
-    SCHEMA, build, latest, normalize_rating, review, trace_terminal, _trace_chain
+    SCHEMA, build, latest, normalize_rating, review, trace_terminal, _trace_chain, measure_shape
 )
 
 def fixture(path):
@@ -31,6 +31,12 @@ def fixture(path):
           id TEXT PRIMARY KEY,diagram_id TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE independent_circles_v039(
           id TEXT PRIMARY KEY,run_id TEXT,x REAL,y REAL,ocr_text TEXT,ocr_confidence REAL);
+        CREATE TABLE path_match_runs_v0310(
+          id TEXT PRIMARY KEY,diagram_id TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+        CREATE TABLE path_matches_v0310(
+          id TEXT PRIMARY KEY,run_id TEXT,fuse_label TEXT,association_id TEXT,
+          circle_id TEXT,terminal_text TEXT,ocr_confidence REAL,geometric_distance REAL,
+          status TEXT,reason TEXT);
         CREATE TABLE auto_runs_v032(
           id TEXT PRIMARY KEY,diagram_id TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE auto_candidates_v032(
@@ -48,6 +54,10 @@ def fixture(path):
         db.execute("INSERT INTO segment_edges_v034 VALUES('s2','segments','extension','candidate_wire',.7,.2,.72,.2)")
         db.execute("INSERT INTO independent_runs_v039(id,diagram_id) VALUES('ir','junction_block')")
         db.execute("INSERT INTO independent_circles_v039 VALUES('pin5','ir',.727,.201,'5',.91)")
+        db.execute("INSERT INTO path_match_runs_v0310(id,diagram_id) VALUES('pm','junction_block')")
+        db.execute("""INSERT INTO path_matches_v0310
+          VALUES('pm1','pm','IG COIL','assoc','pin5','5',.91,.014,
+                 'geometric_candidate_unverified','historic geometry only')""")
         db.execute("INSERT INTO auto_runs_v032(id,diagram_id) VALUES('ar','junction_block')")
         db.execute("""INSERT INTO auto_candidates_v032
           VALUES('rating','ar','ocr_fuse_label','15A',.197,.19,.018,.019,.92)""")
@@ -88,11 +98,13 @@ class TraceReviewTests(unittest.TestCase):
             self.assertEqual(first['focused_rating_ocr_attempts'],0)
             self.assertEqual(first['ratings_ocr_candidates'],1)
             self.assertEqual(first['geometric_terminal_leads'],1)
+            self.assertEqual(first['previous_path_match_rows_reused'],1)
             self.assertEqual(first['electrically_verified_connections'],0)
             before=latest(path,'junction_block')
             self.assertEqual(before['items'][0]['terminal_text'],'5')
             self.assertEqual(before['items'][0]['rating_text'],'15A')
             self.assertFalse(before['items'][0]['trace']['electrically_verified'])
+            self.assertEqual(len(before['items'][0]['trace']['prior_terminal_suggestions']),1)
             second=build(path,'junction_block',original_image)
             self.assertTrue(second['cache_hit'])
             with sqlite3.connect(path) as db:
@@ -108,6 +120,11 @@ class TraceReviewTests(unittest.TestCase):
                 review(path,'junction_block','another_component','confirmed_fuse_symbol')
             with sqlite3.connect(path) as db:
                 self.assertEqual(db.execute('SELECT count(*) FROM trace_runs_v0317').fetchone()[0],1)
+                db.execute("INSERT INTO component_runs_v0316(id,diagram_id) VALUES('new_cr','junction_block')")
+                db.commit()
+            stale=latest(path,'junction_block')
+            self.assertTrue(stale['stale'])
+            self.assertIsNone(stale['run'])
 
 if __name__=='__main__':
     unittest.main()
