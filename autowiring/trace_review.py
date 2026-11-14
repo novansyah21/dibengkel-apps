@@ -243,6 +243,10 @@ def build(dbpath,diagram_id,image_path,ocr_reader=None):
             'SELECT * FROM component_items_v0316 WHERE run_id=? ORDER BY fuse_label,id',(comp_id,))]
         independent_id=newest_id(db,'independent_runs_v039',diagram_id)
         auto_id=newest_id(db,'auto_runs_v032',diagram_id)
+        has_path_matches=bool(db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='path_match_runs_v0310'"
+        ).fetchone())
+        old_match_id=newest_id(db,'path_match_runs_v0310',diagram_id) if has_path_matches else None
         gap_ids=[c['source_gap_id'] for c in components]
         gaps={}
         segment_ids={}
@@ -253,7 +257,7 @@ def build(dbpath,diagram_id,image_path,ocr_reader=None):
         image_hash=hashlib.sha256(image_path.read_bytes()).hexdigest() if image_path.is_file() else 'missing_image'
         fingerprint=hashlib.sha256(json.dumps({
             'version':'v0317.1','component_run_id':comp_id,'independent_run_id':independent_id,
-            'auto_run_id':auto_id,'segment_run_ids':segment_ids,'image_sha256':image_hash
+            'auto_run_id':auto_id,'previous_path_match_run_id':old_match_id,'segment_run_ids':segment_ids,'image_sha256':image_hash
         },sort_keys=True).encode('utf-8')).hexdigest()
         existing=db.execute('SELECT summary_json FROM trace_runs_v0317 WHERE diagram_id=? AND input_fingerprint=?',
                             (diagram_id,fingerprint)).fetchone()
@@ -261,6 +265,11 @@ def build(dbpath,diagram_id,image_path,ocr_reader=None):
             return dict(json.loads(existing['summary_json']),cache_hit=True,older_stages_rerun=0)
         circles=[dict(x) for x in db.execute('SELECT * FROM independent_circles_v039 WHERE run_id=?',
                                             (independent_id,))] if independent_id else []
+        old_matches=[dict(x) for x in db.execute(
+            """SELECT fuse_label,association_id,circle_id,terminal_text,ocr_confidence,
+                      geometric_distance,status,reason
+               FROM path_matches_v0310 WHERE run_id=? AND circle_id IS NOT NULL""",
+            (old_match_id,))] if old_match_id else []
         previous=[dict(x) for x in db.execute(
             "SELECT label,x,y,w,h,confidence FROM auto_candidates_v032 WHERE run_id=? AND kind LIKE 'ocr_%'",
             (auto_id,))] if auto_id else []
@@ -301,7 +310,13 @@ def build(dbpath,diagram_id,image_path,ocr_reader=None):
                     'no crossings bridged and no electrical continuity or connector ownership established. '
                     +chain_status)
             if not independent_id:trace_status='cached_independent_ocr_missing'
+            prior=[{'terminal_text':x['terminal_text'],'circle_id':x['circle_id'],
+                    'geometric_distance':x['geometric_distance'],
+                    'association_id':x['association_id'],
+                    'status':'historical_geometric_hypothesis_unverified'}
+                   for x in old_matches if x['fuse_label'].strip().upper()==c['fuse_label'].strip().upper()]
             trace={'points':points,'edge_ids':chain_ids,'chain_status':chain_status,
+                   'prior_terminal_suggestions':prior[:8],
                    'terminal_candidates':candidates,'left_side_edge_id':c['source_edge_id'],
                    'right_side_edge_id':c['target_edge_id'],
                    'component_node_id':c['id'],'connector_verified':False,
@@ -322,6 +337,7 @@ def build(dbpath,diagram_id,image_path,ocr_reader=None):
                  'electrically_verified_connections':0,
                  'input_fingerprint':fingerprint,
                  'cached_independent_ocr_available':bool(independent_id),
+                 'previous_path_match_rows_reused':len(old_matches),
                  'warning':'Visual hypotheses only. No electrical verification or confirmed connector pinouts.'}
         run_id=uuid.uuid4().hex
         cursor=db.execute(
@@ -349,6 +365,9 @@ def latest(dbpath,diagram_id):
         run=db.execute('SELECT * FROM trace_runs_v0317 WHERE diagram_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1',
                        (diagram_id,)).fetchone()
         if not run:return {'run':None,'items':[]}
+        if run['component_run_id']!=newest_id(db,'component_runs_v0316',diagram_id):
+            return {'run':None,'items':[],'stale':True,
+                    'reason':'v0.3.16 component run changed; click Continue once to reuse new saved evidence.'}
         reviews={r['component_id']:dict(r) for r in db.execute(
             'SELECT * FROM trace_reviews_v0317 WHERE diagram_id=?',(diagram_id,))}
         items=[]
