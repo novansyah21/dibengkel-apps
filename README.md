@@ -1,41 +1,45 @@
-# AutoWiring v0.3.17 — One-click Fuse Recognition & Circuit Tracing
+# AutoWiring v0.3.18 — Enhanced Fuse Rating Recognition & Circuit Tracing
 
-This feature **continues the saved v0.3.16 analysis**. It does **not** rerun earlier image OCR, geometric graph building, segmentation, association, independent circle OCR, gap inspection, or component detection.
+**Tujuan:** lanjutkan hasil v0.3.17 **tanpa mengulang proses sebelumnya**. Version ini tidak menjalankan ulang image-wide OCR, circle detection, segmentation, component discovery, maupun v0.3.17 trace.
 
-## Run on Windows
+## Jalankan di Windows
 
-Keep the **same** `output/autowiring.db` and `sample_assets/` as v0.3.16 (do not delete or reset the database).
+Pastikan folder **output/autowiring.db** dan **sample_assets** dari v0.3.17 masih ada. Jangan menghapus database!
 
-```powershell
+~~~powershell
 cd D:\dibengkelapp\AutoWiring-v0.3.3
 git fetch origin
-git switch --track origin/feature/v0.3.17
+git switch --track origin/feature/v0.3.18
 py viewer.py
-```
+~~~
 
-Open `http://127.0.0.1:8765` and press Ctrl+Shift+R once if the old JS is cached. Select **Junction Block**, then click the **single blue button at the top: "▶ Continue saved analysis (v0.3.17)"**. Do not run the old analysis buttons again. The app consumes persisted v0.3.16 components and older OCR/segmentation.
+Buka http://127.0.0.1:8765 lalu tekan **Ctrl+Shift+R**.
 
-## What happens, exactly?
+Pilih diagram **Junction Block**, lalu cukup klik **▶ Analyze saved results (v0.3.18)** di kartu biru paling atas. Tidak perlu klik tombol lama.
 
-- Existing four fuse-component hypotheses are **reused by ID** and evaluated against **unannotated original pixels** for waveform-like evidence. A match is still only a visual candidate.
-- Existing terminal circle numbers and geometric segments are **read from SQLite**; one candidate trace is proposed only where endpoints meet geometrically. It does not cross ambiguous intersections or assume every visually nearby line is connected.
-- Fuse rating OCR **first reuses prior OCR tokens**. If a rating is not available, a **focused, small-image crop** is OCR'd (at most two configurations per fuse). Tesseract being unavailable does not block building the non-OCR trace.
-- Each result is cached against the component run, independent-circle OCR run, image hash, prior OCR run, and segmentation IDs. Clicking the blue button **again** returns `cache_hit: true`; no previous stage or focused OCR runs again for unchanged inputs.
-- Manual *visual* confirmation of fuse symbols and their ampere rating is separately saved; it **never confirms electrical continuity** or physical connector ownership.
-- The overlay is **dashed amber** (unverified). All previews and JSON exports retain `electrically_verified: false`.
-- Export **`autowiring-junction_block-trace-review-v0317.json`** and share it to inspect candidate traces and OCR evidence.
+Hasil dapat dilihat lewat **Show updated path hypotheses**, expanded per-fuse **Original-image OCR crops + raw debug**, dan **Terminal candidates**. Klik **Export v0.3.18 trace & OCR evidence JSON** untuk mengirim hasil pengujian.
 
-## Prerequisites / limitations
+## Apa yang baru
 
-- Existing `output/autowiring.db` with a v0.3.16 component run is **required**. There is deliberately **no automatic legacy pipeline rebuild** if the database is empty.
-- Independent-circle OCR is optional: if absent, the app explicitly reports it, without running circle detection again.
-- The vehicle/diagram applicability remains unverified. Same-row proximity, OCR text, apparent waveform, and endpoint collinearity are not proof of electrical connectivity, fusing, connector pin number, or circuit direction.
-- Pillow and pytesseract/Tesseract are only used when already available for focused image analysis. Existing run can be reviewed without rerunning OCR.
+- **Targeted rating OCR + crop evidence**: hanya gambar kecil **right_compact, right_above, right_below** pada fuse; garis diagram dapat dibersihkan jika mendominasi baris. Tiap crop punya preview PNG dan log token mentah OCR. Memanfaatkan rating dari v0.3.17 atau review manual jika tersedia; tidak memanggil ulang OCR lama.
+- **Endpoint-only geometric tracing with bends**: menambahkan jalur saat endpoint segmen berikutnya menyentuh endpoint terakhir secara unik, termasuk belokan 90°. T-junction, cabang, intersection interior dan rangkaian ambigu tidak otomatis disambung.
+- **Ranked terminal leads, including conflicts**: menggunakan circle OCR dan path match sebelumnya, bukan mendeteksi ulang. Kasus **BACK 14 vs 21** dipertahankan sebagai evidence conflict untuk review. OCR confidence bukan keyakinan koneksi listrik.
+- **Incremental, deterministic SQLite cache**: bergantung pada run v0.3.17 + fingerprint. Klik ulang tombol dengan data yang sama → hasil cache; **0 tahap lama diulang**; tidak ada tambahan OCR baru yang diulang. Review fuse/rating manual bisa disimpan tanpa analisis ulang.
+- **One-click UI**: hasil awal v0.3.17 tersembunyi dalam accordion "Alat v0.3.17" dan tetap bisa dibaca; dashboard v0.3.18 ada di atas.
 
-## Regression tests
+## Status keamanan dan kejujuran inferensi
 
-```powershell
-py -m unittest discover -s tests -p "test_trace_review.py" -v
-```
+Semua link diagram ini adalah **geometric candidate / visual evidence**, bukan bukti listrik:
+- **electrically_verified_connections: 0**
+- Fuse rating OCR adalah *candidate* sampai dikonfirmasi visual.
+- Nomor terminal OCR, kedekatan dan kelurusan garis bukan bukti kepemilikan pin connector.
+- Diagram Suzuki SX4 2007 dalam repo masih berstatus vehicle applicability unverified.
 
-CI additionally compiles Python and syntax-checks `web/app.js`. All results remain visual hypotheses, not electrical evidence.
+## Tests
+
+~~~powershell
+py -m pip install "Pillow>=10,<13"
+py -m unittest discover -s tests -p "test_trace_*.py" -v
+~~~
+
+GitHub Actions juga melakukan compileall, node --check, dan regression tests. Uji runtime Windows dengan gambar asli harus dilakukan oleh pengguna karena gambar itu tidak disertakan pada repository.
