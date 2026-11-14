@@ -49,7 +49,7 @@ CROP_SETTINGS = (
     ("right_above",   .002, .082, -.032, .001),
     ("right_below",   .002, .082, -.002, .032),
 )
-PROCESSOR_VERSION="v0318.2"
+PROCESSOR_VERSION="v0318.3"
 
 def source_snapshot(db,diagram_id):
     trace_id=newest_id(db,"trace_runs_v0317",diagram_id)
@@ -307,9 +307,21 @@ def build(dbpath,diagram_id,image_path,reader=None):
         old_items=[dict(r) for r in db.execute(
             "SELECT * FROM trace_items_v0317 WHERE run_id=? ORDER BY fuse_label",
             (trace["id"],))]
+        # Exact source bytes are part of the cache key. A source image edited
+        # after legacy geometry was built invalidates its coordinates; fail
+        # safely instead of rerunning older stages or accepting wrong geometry.
+        image_digest=hashlib.sha256(image_path.read_bytes()).hexdigest() if image_path.is_file() else None
+        auto_cols={x["name"] for x in db.execute("PRAGMA table_info(auto_runs_v032)")}
+        if image_digest and "image_sha256" in auto_cols:
+            auto=db.execute("""SELECT image_sha256 FROM auto_runs_v032
+              WHERE diagram_id=? ORDER BY created_at DESC,rowid DESC LIMIT 1""",
+              (diagram_id,)).fetchone()
+            if auto and auto["image_sha256"] and auto["image_sha256"]!=image_digest:
+                raise ValueError("Original diagram image changed since previous analysis. Saved geometry is not reliable; older stages were NOT rerun.")
         fingerprint=hashlib.sha256(json.dumps({
             "processor":PROCESSOR_VERSION,"trace_run_id":trace["id"],
             "trace_input_fingerprint":json.loads(trace["summary_json"]).get("input_fingerprint"),
+            "source_image_sha256":image_digest or "image_not_available",
             "components":[x["component_id"] for x in old_items]
         },sort_keys=True).encode()).hexdigest()
         existing=db.execute(
