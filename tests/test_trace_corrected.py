@@ -64,6 +64,9 @@ class CorrectedTraceTests(unittest.TestCase):
         self.assertEqual(report['status'],
                          'focused_unread_circle_ocr_candidate_needs_review')
         self.assertEqual(reader.call_count,1)
+        # Exact pixel center of real ABS unread circle was (767, 950);
+        # round() would move y to 951 and lose confident recognition.
+        self.assertEqual(report['box'],[761,944,774,957])
         self.assertTrue(report['crop_png_base64'])
         self.assertFalse(report['electrically_verified'])
     def test_no_focused_ocr_when_previous_circle_read(self):
