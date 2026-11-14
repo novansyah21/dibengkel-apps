@@ -245,7 +245,10 @@ def targeted_unread_circle_ocr(gray,endpoint,circles,reader=None):
         return None,{'status':'ambiguous_nearby_unread_circles','attempts':[]}
     from PIL import ImageOps,ImageEnhance
     c=candidates[0][1]
-    w,h=gray.size;x=round(c['x']*w);y=round(c['y']*h)
+    # Hough circle coordinates in the persisted v0.3.9 detector were generated
+    # as integer pixel locations then normalized; floor restores their exact
+    # center (round would shift the ABS 9 crop down by one crucial pixel).
+    w,h=gray.size;x=int(c['x']*w+1e-7);y=int(c['y']*h+1e-7)
     r=max(4,round(float(c['r'])*max(w,h)))
     half=max(3,round(r*.58))
     box=(max(0,x-half),max(0,y-half),min(w,x+half+1),min(h,y+half+1))
