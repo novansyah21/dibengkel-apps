@@ -1,92 +1,91 @@
-# AutoWiring MVP 0.1 — Assisted Wiring Review (v0.3.22)
+# AutoWiring v0.4.0 — Multi-Vehicle Catalog & Electrical Triage (Beta)
 
-**Status: MVP review-assist untuk satu gambar Junction Block. Bukan diagnostic assistant otomatis.**
+**Status produk:** viewer dan manual wiring-map untuk diagram mobil apa pun, OCR/CV universal sebagai **kandidat visual**, katalog kendaraan, dan diagnosis awal kelistrikan 12V **berdasarkan gejala dan bukti pengukuran**. Aplikasi belum dapat membuktikan netlist listrik seluruh kendaraan atau menetapkan penyebab kerusakan otomatis dari gambar saja.
 
-Setelah pengujian v0.3.21, keempat nomor terminal bermasalah masih **0/4 lolos OCR consensus**. Menaikkan confidence atau memaksakan nomor dari referensi manusia akan menyembunyikan kesalahan. Eksperimen lokal circle-border suppression memperjelas bentuk angka pada beberapa crop tetapi juga **menghapus sebagian guratan digit**, sehingga **bukan pengenal angka yang tervalidasi**. v0.3.22 menyediakan tampilan original vs masked untuk **pemeriksaan manusia**, tanpa menyebutnya machine recognition.
+## Instalasi / upgrade Windows
 
-## Jalankan di Windows — tetap dengan database lama
-
-**Jangan menghapus folder output atau file output/autowiring.db.** Semua hasil sebelumnya disimpan di sana. Pastikan gambar Junction Block sumber tetap ada di sample_assets.
+Jangan hapus output/autowiring.db atau sample_assets. Gunakan folder dan database sebelumnya.
 
 ~~~powershell
 cd D:\dibengkelapp\AutoWiring-v0.3.3
 git fetch origin
-git switch --track origin/feature/v0.3.22-mvp
+git switch --track origin/feature/v0.4.0-multivehicle-diagnostics
 py viewer.py
 ~~~
 
-Buka **http://127.0.0.1:8765**, kemudian tekan **Ctrl + Shift + R** sekali.
+Buka http://127.0.0.1:8765, lalu Ctrl + Shift + R untuk refresh JS/CSS. Loading spinner sebelumnya tetap aktif selama permintaan API dan pemuatan gambar.
 
-## Cara pakai MVP
+## A. Pilih kendaraan: Merk → Jenis → Nama → Varian → Tahun
 
-1. Pilih **Junction Block**.
-2. Klik tombol hijau/biru **▶ Load saved six-fuse MVP report** di bagian paling atas.
-3. Tinjau **6 kandidat fuse**, rating, jalur utama, 5 cabang/continuation dan tanda putus-putus pada gambar.
-4. Di bagian **4 terminal requiring manual visual review**, bandingkan gambar lingkaran asli dan gambar experimental border mask. Masukkan **nomor yang lu lihat sendiri**, pilih **Confirm number VISUALLY**, lalu **Save manual visual decision**. Jangan mengisi nomor hanya karena visual reference menunjukkan angka tertentu jika belum diperiksa.
-5. Gunakan **Save audit snapshot** untuk menyimpan hasil saat ini (idempotent, tidak membuat salinan baru jika review tidak berubah).
-6. **Export MVP review JSON** atau **Export wiring checklist CSV**. Bagikan file JSON untuk evaluasi berikutnya.
+Bagian 🚗 **Identitas Kendaraan** menyediakan:
+1. **Merk**: Toyota, Daihatsu, Suzuki, Honda, Mitsubishi, Wuling, Hyundai, BMW dan lebih banyak.
+2. **Jenis/Tipe bodi** berdasarkan merk: hatchback, MPV, SUV, sedan, city car, pickup dan lainnya.
+3. **Nama mobil/model**, misalnya Suzuki Swift, Suzuki SX4, Wuling Air ev atau Toyota Avanza.
+4. **Tipe/Varian**, teks yang lu masukkan secara manual (misalnya GL AT atau G CVT), tahun, dan jenis penggerak.
+5. Klik **Simpan kendaraan & hubungkan ke diagram**; pilih profil tersimpan untuk menghubungkan diagram lain ke kendaraan tersebut.
+6. Model/merk belum ada? Klik **＋ Merk / nama model belum tersedia?** untuk memasukkan ke katalog lokal.
 
-Semua tombol, termasuk tombol analisis lama, tetap menampilkan **spinner/loading di atas gambar**, penghitung request yang selesai/belum, waktu berjalan, dan notifikasi selesai/gagal. **Tidak ada persentase palsu.**
+Ada **21 merk awal** dengan banyak nama model contoh. Ini **bukan** database resmi kecocokan tahun, mesin, ECU, varian dan pinout. Lu tetap wajib menggunakan diagram servis yang cocok dengan kendaraan sebenarnya. Katalog user-custom tetap bisa diperluas, bukan daftar tertutup.
 
-## MVP dapat digunakan untuk diagram kendaraan lain — mode manual
+## B. Universal Diagram Reader (OCR/CV beta)
 
-Untuk selain Junction Block contoh, **tidak ada klaim pengenalan diagram secara otomatis**. Tetapi bengkel tetap dapat memanfaatkannya untuk penelusuran visual berbasis anotasi:
+1. Klik **＋ Import wiring diagram (PNG/JPEG)** dan pilih gambar kendaraan.
+2. Pilih diagram aktif.
+3. Klik **▶ Analisis gambar aktif — OCR & kandidat kabel**.
+4. Jika dependensi tersedia, sistem membaca label, rating fuse dan segmen garis memakai OCR/OpenCV; tampilkan hasil sebagai kandidat dengan OCR confidence.
+5. Gunakan anotasi, jalur manual, dan konektor pada viewer untuk pemeriksaan lebih lanjut.
 
-1. Klik **＋ Import wiring diagram (PNG/JPEG)** pada bagian Diagram.
-2. Pilih gambar lokal maksimum **8 MB, 15 megapiksel**. Isi judul dan nama/model kendaraan.
-3. AutoWiring menyimpan gambar dalam format PNG bersih ke **sample_assets**, mendaftarkannya ke SQLite, dan membuka gambar baru tanpa menghapus diagram sebelumnya. Server hanya menerima nama file image yang sudah terdaftar; file path tidak boleh dimasukkan pengguna.
-4. Gunakan **+ Anotasi**, **+ Jalur**, **Terminal**, dan **Hubungkan jalur** untuk memetakan kandidat jalur secara manual. Hasil tetap bertanda **needs_review**.
-5. Mesin pemetaan otomatis enam fuse sengaja **dinonaktifkan** untuk gambar baru, karena source-specific anchors belum valid pada kendaraan lain.
+Kandidat OCR dan potongan garis **tidak** membuktikan kontinuitas. Scanner **tidak** menyambungkan crossing, tidak otomatis mengenali tipe ECU, dan tidak mengonversi gambar apa pun menjadi netlist elektrik tepercaya. Hasil scan disimpan berdasarkan checksum gambar agar tombol yang sama tidak mengulang OCR/CV.
 
-Ini menjadikan aplikasi **MVP diagram viewer + manual wiring tracer + review report untuk sampel**, bukan klaim multi-vehicle auto interpreter. Source image dan database user tersimpan **lokal** dan tidak diunggah ke layanan luar oleh fitur import ini.
-
-**Perbaikan penting v0.3.22:** permintaan `/loading.js` sekarang dilayani oleh local server (pada v0.3.21 script loading sempat tidak masuk static route). Loading spinner kini tidak hanya ada dalam kode frontend, tapi dapat dimuat dan diuji melalui HTTP lokal.
-
-## Cakupan MVP yang faktual
-
-| Kemampuan | Status |
-|---|---|
-| Viewer/zoom/pan/annotation | Ada |
-| Kandidat fuse pada gambar Junction Block tertentu | 6 (source-locked, tidak generik) |
-| Rating kandidat | 6 |
-| Kandidat main path | 6 |
-| Kandidat cabang/continuation | 5, termasuk satu off-page continuation |
-| Terminal visual reference yang butuh review | 4 |
-| OCR otomatis baru yang lolos v0.3.21 | 0/4 |
-| Elektrikal continuity yang diverifikasi | **0** |
-| Diagnosis otomatis / dukungan diagram kendaraan lain | **Tidak tersedia** |
-
-Berikut **empat nomor yang tampil sebagai referensi visual manusia, BUKAN machine OCR**:
-
-- IG1 SIG main: E325 / **12**
-- IG1 SIG branch: G272 / **16**
-- ABS branch: L315 / **6**
-- BACK branch: G272 / **8** (mesin sebelumnya membaca **2**, yang tidak boleh otomatis dianggap benar)
-
-Laporan tidak diam-diam mengubah angka mesin dari 2 menjadi 8. Sebelum review, nomor efektif untuk empat target masih **unknown**, dan referensi visual disimpan di kolom terpisah. Ketika pengguna mengonfirmasi, status menjadi **human_visual_review_only** — **bukan electrically verified**.
-
-## Apa arti tombol "Save audit snapshot"?
-
-Menyimpan salinan immutable laporan review di tabel SQLite mvp_snapshots_v0322, termasuk ID run v0.3.20 dan v0.3.21, SHA gambar, keputusan manual, kandidat fuse, dan status bukti. Bila tidak ada keputusan baru, fingerprint menghasilkan cache hit dan tidak menambah snapshot duplikat. OCR/graph/segmentation/branch tracing **tidak diulang**.
-
-CSV sengaja menampilkan kolom **Electrical verified: NO** untuk seluruh baris.
-
-## Batas keandalan dan acceptance gate
-
-**MVP ini layak hanya sebagai aplikasi pendamping review visual pada satu diagram sampel dengan supervisi manusia.** Tidak layak sebagai netlist elektrik otomatis, rekomendasi penggantian komponen, atau dasar tindakan pada kendaraan.
-
-Untuk menyatakan satu wiring diagram lain didukung, perlu benchmark terpisah terhadap gambar baru: identifikasi komponen, deteksi percabangan, nomor terminal, kelengkapan jalur, *false joins*, dan validasi oleh teknisi. Contoh ini memakai source-locked layout anchors, sehingga **tidak dapat diklaim digeneralisasi**.
-
-Pengguna dapat menyelesaikan empat review visual sehingga laporan menyatakan "assisted_visual_review_ready". Status **diagnostic_ready tetap false** dan **electrically_verified_connections tetap 0**.
-
-## Testing
+Paket Python opsional untuk OCR/CV:
 
 ~~~powershell
-py -m pip install "Pillow>=10,<13"
-py -m unittest discover -s tests -p "test_*trac*.py" -v
-py -m unittest discover -s tests -p "test_terminal_accuracy.py" -v
-py -m unittest discover -s tests -p "test_mvp_review.py" -v
-node --test tests/test_loading_progress.cjs
+py -m pip install pillow pytesseract opencv-python numpy
 ~~~
 
-GitHub Actions menjalankan regresi seluruh versi sebelumnya dan tes tambahan untuk snapshot, manual overrides, source lock, konflik OCR historis dan indikator loading. Hasil runtime yang diharapkan untuk evaluasi adalah **autowiring-junction_block-assisted-mvp-v0322.json**.
+Tesseract juga membutuhkan executable Tesseract OCR pada sistem operasi. Tanpa Tesseract/OpenCV, import gambar, viewer, katalog dan rule-assisted 12V triage tetap tersedia; aplikasi akan menandai OCR/CV unavailable.
+
+## C. Diagnosis Awal Gangguan Listrik 12V (Beta)
+
+Buka bagian **🧰 Pemeriksaan Gangguan Listrik**:
+1. Pilih gejala (misalnya lampu mati, starter tidak berputar, fuse putus berulang, gangguan intermiten atau aki melemah).
+2. Pilih sistem: starting, lighting, body, charging 12V, general 12V, ABS, SRS atau high-voltage.
+3. Bila sudah diukur dengan benar, masukkan nilai yang tersedia saja: tegangan aki 12V dalam kondisi mesin mati, input/output fuse, suplai beban, ground drop dan status continuity fuse.
+4. Klik **Analisis kemungkinan penyebab & pemeriksaan berikutnya**.
+
+Contoh: jika input fuse dilaporkan 12,4 V dan output 0,1 V, aplikasi mengeluarkan **hipotesis** fuse terbuka/kontak holder buruk, bukan vonis komponen yang pasti rusak. Tanpa pengukuran, hasilnya **insufficient_evidence**, bukan kepastian. Hasil identik disimpan satu kali dalam SQLite, dengan riwayat per diagram.
+
+**Safety:** pemeriksaan high-voltage EV/hybrid dan airbag/SRS dibatasi ke teknisi tersertifikasi. Jangan menjumper sekering, menaikkan rating sekering, atau melakukan continuity probing pada sirkuit airbag/SRS dan HV.
+
+Diagnosis di sini masih **rule-based triage**, bukan AI yang otomatis mengetahui semua kerusakan pada seluruh merek dan tahun kendaraan. Angka OCR/garis dari gambar tidak dipakai untuk mengklaim koneksi atau ECU tertentu sebagai sumber masalah.
+
+## D. Legacy MVP tidak hilang
+
+MVP 0.1 untuk Junction Block Suzuki SX4: enam fuse, lima branch candidates, empat terminal perlu review, snapshot/ekspor dan manual mapping tetap ada. Pipeline enam-fuse spesifik source **tidak diterapkan** pada diagram lain. Tahapan sebelumnya hanya dibaca, tidak dihitung ulang.
+
+## Acceptance & keterbatasan
+
+| Target | Kondisi |
+|---|---|
+| Pemilihan merk / jenis / model / varian / tahun | Tersedia, contoh katalog dapat ditambah |
+| Import diagram apa pun | Tersedia untuk review manual |
+| OCR label dan line candidates generik | Beta, jika deps lokal terpasang |
+| Circuit graph listrik untuk seluruh jenis kendaraan | **Belum dapat diverifikasi** |
+| Diagnosis awal berbasis data gejala dan pengukuran | Beta, output conditional hypotheses |
+| Diagnosis otomatis tanpa bukti pengukuran atau manual | **Tidak didukung** |
+| Electrical continuity verified | **0** |
+| Diagnosis siap digunakan tanpa validasi teknisi | **Tidak** |
+
+Hasil triage menyimpan automatic_diagnosis_verified=false dan electrical_continuity_verified=false.
+
+## Pengujian
+
+~~~powershell
+py -m unittest discover -s tests -p "test_vehicle_diagnosis.py" -v
+py -m unittest discover -s tests -p "test_universal_scan.py" -v
+py -m unittest discover -s tests -p "test_vehicle_api_http.py" -v
+~~~
+
+GitHub Actions menjalankan regresi versi lama, compile Python, syntax JS, katalog/konektivitas antar-dropdown, API HTTP, generic OCR scan hash cache, penolakan input tak valid, serta guardrails SRS/high-voltage.
+
+**Untuk mencapai diagnosis listrik otomatis yang layak digunakan bengkel**, dibutuhkan dataset diagram lintas mobil dengan referensi service-manual, anotasi simbol/pinout dan pengukuran teknisi yang telah diverifikasi. Benchmark harus mengukur false connections, kesalahan OCR terminal, serta akurasi rekomendasi fault. Jangan mengklaim hasil sempurna pada seluruh jenis kendaraan tanpa validasi tersebut.
