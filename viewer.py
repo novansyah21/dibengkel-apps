@@ -1,5 +1,5 @@
 """AutoWiring v0.3.22 MVP-assisted interactive diagram review server (stdlib)."""
-import argparse,json,mimetypes,sqlite3,shutil,uuid
+import argparse,json,mimetypes,sqlite3,shutil,uuid,re
 from pathlib import Path
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
 from urllib.parse import urlparse,parse_qs
@@ -28,6 +28,7 @@ from autowiring.trace_corrected import SCHEMA as CORRECTED_SCHEMA,build as build
 from autowiring.branch_tracing import SCHEMA as BRANCH_SCHEMA,build as build_branches,latest as latest_branches,save_visual_review as save_branch_visual_review
 from autowiring.terminal_accuracy import SCHEMA as ACCURACY_SCHEMA,build as build_terminal_accuracy,latest as latest_terminal_accuracy,review as review_terminal_accuracy
 from autowiring.mvp_review import SCHEMA as MVP_SCHEMA,assemble as mvp_report,snapshot as mvp_snapshot,snapshots as mvp_snapshots
+from autowiring.diagram_upload import upload as upload_diagram
 
 ROOT=Path(__file__).resolve().parent
 SCHEMA="""
@@ -158,20 +159,28 @@ def run(port,dbpath):
     return self.send(200,self.query('SELECT l.*,a.label AS annotation_label,p.label AS path_label,t.terminal_number FROM viewer_circuit_links l JOIN viewer_annotations a ON a.id=l.annotation_id JOIN viewer_paths p ON p.id=l.path_id LEFT JOIN viewer_terminals t ON t.id=l.terminal_id WHERE l.diagram_id=? ORDER BY p.label,a.label',(d,)))
    if p.startswith('/images/'):
     name=p.removeprefix('/images/')
-    if name not in {x[2] for x in SEEDS}:return self.send(404,{'error':'not found'})
+    # Only serve sanitized basenames registered in this local app database.
+    # This includes preinstalled sample diagrams AND user-uploaded PNGs.
+    if (not re.fullmatch(r'[A-Za-z0-9_-]+\.png',name)
+        or not self.query('SELECT id FROM viewer_diagrams WHERE image_file=?',(name,))):
+     return self.send(404,{'error':'not found'})
     file=ROOT/'sample_assets'/name
    elif p in ('/','/index.html'):file=ROOT/'web'/'index.html'
-   elif p in ('/app.js','/style.css'):file=ROOT/'web'/p[1:]
+   elif p in ('/app.js','/style.css','/loading.js'):file=ROOT/'web'/p[1:]
    else:return self.send(404,{'error':'not found'})
    if not file.is_file():return self.send(404,{'error':'file missing'})
    data=file.read_bytes();self.send_response(200);self.send_header('Content-Type',mimetypes.guess_type(str(file))[0] or 'application/octet-stream');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
   def body(self):
    n=int(self.headers.get('Content-Length','0'))
-   if n<=0 or n>50000:raise ValueError('invalid body size')
+   cap=12*1024*1024 if urlparse(self.path).path=='/api/diagram-upload' else 50000
+   if n<=0 or n>cap:raise ValueError('invalid body size')
    return json.loads(self.rfile.read(n))
   def do_POST(self):
    try:
-    p=urlparse(self.path).path;v=self.body();diagram=v.get('diagram_id','')
+    p=urlparse(self.path).path;v=self.body()
+    if p=='/api/diagram-upload':
+     return self.send(201,upload_diagram(dbpath,ROOT/'sample_assets',v))
+    diagram=v.get('diagram_id','')
     if not self.query('SELECT id FROM viewer_diagrams WHERE id=?',(diagram,)):raise ValueError('unknown diagram')
     if p=='/api/mvp-snapshot':
      info=self.query('SELECT image_file FROM viewer_diagrams WHERE id=?',(diagram,))[0]
