@@ -1,6 +1,47 @@
-# AutoWiring v0.4.0 — Multi-Vehicle Catalog & Electrical Triage (Beta)
+# AutoWiring v0.4.1 — Multi-Vehicle & PDF Source Library
 
 **Status produk:** viewer dan manual wiring-map untuk diagram mobil apa pun, OCR/CV universal sebagai **kandidat visual**, katalog kendaraan, dan diagnosis awal kelistrikan 12V **berdasarkan gejala dan bukti pengukuran**. Aplikasi belum dapat membuktikan netlist listrik seluruh kendaraan atau menetapkan penyebab kerusakan otomatis dari gambar saja.
+
+## v0.4.1 — PDF Source Library (rights-aware)
+
+The 📚 Wiring PDF Source Library UI lists previously discussed references and locally archived PDFs:
+
+- Operation CHARM: https://charm.li/ (HTML/images; not assumed to provide PDFs)
+- BMW ETM Archive: https://shark.armchair.mb.ca/~dave/BMW/ (some historical PDF links)
+- BMW WDS: https://wds.psjr.org/en/ (interactive diagram site)
+- BMWTeka: https://bmwteka.com/en (service manual catalog)
+- CarManualsOnline: https://www.carmanualsonline.info/ (online manual site)
+
+These sources are **not automatically scraped or downloaded**. Their license status is unknown. No paywall, login, anti-bot or robots.txt bypass. If robots.txt cannot be checked or denies access, discovery/download fails closed. The app will not redistribute copyrighted manuals.
+
+List sources and local PDFs:
+
+~~~powershell
+py pdf_sources.py sources
+py pdf_sources.py list
+~~~
+
+Discover direct PDF links on one public HTML page (dry run, no download):
+
+~~~powershell
+py pdf_sources.py discover --url "https://example.org/public-index/"
+~~~
+
+Add a locally owned/authorized PDF:
+
+~~~powershell
+py pdf_sources.py add-local --file "C:\manuals\wiring.pdf" --title "Wiring diagram" --vehicle "Suzuki Swift 2007" --rights "licensed personal reference"
+~~~
+
+Download **one** direct HTTPS PDF only when authorized and robots.txt permits:
+
+~~~powershell
+py pdf_sources.py import-url --url "https://example.org/permitted-manual.pdf" --title "Wiring diagram" --vehicle "Suzuki Swift 2007" --rights "express permission from rights holder" --confirm-rights
+~~~
+
+Example.org URLs above are placeholders, not verified authorized sources.
+
+Files are SHA256-deduplicated into output/pdf_library/ with metadata in SQLite. The UI lists only registered files and serves them from that folder. This feature does not yet convert PDF pages into diagram images or verified circuit graphs.
 
 ## Instalasi / upgrade Windows
 
