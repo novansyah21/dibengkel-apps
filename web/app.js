@@ -7,7 +7,15 @@ function draw(){const overlay=$('overlay');overlay.replaceChildren();overlay.set
 function inspect(type,obj){$('inspector').innerHTML=`<b>${esc(obj.label||obj.connector_label||obj.path_label)}</b><p>Jenis: ${esc(obj.kind||type)}</p><p>Status: ${esc(obj.verification)}</p><p>${esc(obj.notes||'Tanpa catatan')}</p><p class="muted">ID: ${esc(obj.id)}</p>`}
 function list(id,items,type){const el=$(id);el.replaceChildren();for(const x of items){const row=document.createElement('div');row.className='item';const b=document.createElement('button');b.textContent=x.label;b.onclick=()=>inspect(type,x);const del=document.createElement('button');del.className='delete';del.textContent='×';del.title='Hapus';del.onclick=async()=>{if(!confirm(`Hapus ${x.label}?`))return;await api(`/api/${type}/${x.id}`,{method:'DELETE'});await refresh()};row.append(b,del);el.append(row)}}
 async function refresh(){S.graph=await api(`/api/graph?diagram=${S.diagram.id}`);S.segmentation=await api(`/api/segmentation?diagram=${S.diagram.id}`);$('segmentInfo').textContent=S.segmentation.run?`${S.segmentation.run.candidate_wire_segments}/${S.segmentation.run.raw_segments} candidate segments • ${S.segmentation.run.excluded_structural_segments} excluded • ${S.segmentation.run.remaining_ambiguous_crossings} crossings • 0 verified connections`:'Segmentation not built';S.associations=await api(`/api/associations?diagram=${S.diagram.id}`);S.terminalCandidates=await api(`/api/terminal-candidates?diagram=${S.diagram.id}`);renderTerminalCandidates();S.circleCandidates=await api(`/api/circle-candidates?diagram=${S.diagram.id}`);renderCircleCandidates();S.evidence=await api(`/api/evidence?diagram=${S.diagram.id}`);renderEvidence();S.independent=await api(`/api/independent-ocr?diagram=${S.diagram.id}`);renderIndependent();S.pathMatches=await api(`/api/path-matches?diagram=${S.diagram.id}`);renderPathMatches();S.fuseAudit=await api(`/api/fuse-audit?diagram=${S.diagram.id}`);renderFuseAudit();S.localOCR=await api(`/api/local-ocr?diagram=${S.diagram.id}`);renderLocalOCR();S.diagnostics=await api(`/api/match-diagnostics?diagram=${S.diagram.id}`);renderDiagnostics();S.continuity=await api(`/api/continuity-audit?diagram=${S.diagram.id}`);renderContinuity();S.targeted=await api(`/api/targeted-ocr?diagram=${S.diagram.id}`);renderTargeted();S.gapVisual=await api(`/api/gap-visual?diagram=${S.diagram.id}`);renderGapVisual();S.components=await api(`/api/components?diagram=${S.diagram.id}`);renderComponents();S.trace=await api(`/api/trace?diagram=${S.diagram.id}`);renderTrace();S.enhanced=await api(`/api/enhanced-trace?diagram=${S.diagram.id}`);renderEnhanced();S.corrected=await api(`/api/corrected-trace?diagram=${S.diagram.id}`);renderCorrected();S.branchesV0320=await api(`/api/branch-trace?diagram=${S.diagram.id}`);renderBranchTrace();S.terminalAccuracy=await api(`/api/terminal-accuracy?diagram=${S.diagram.id}`);renderTerminalAccuracy();S.selectedAssociation=null;renderAssociations();S.selectedEdge=null;renderGraph();S.auto=await api(`/api/auto-candidates?diagram=${S.diagram.id}`);const kinds={};for(const a of S.auto)kinds[a.kind]=(kinds[a.kind]||0)+1;$('autoInfo').textContent=`${S.auto.length} kandidat • ${Object.entries(kinds).map(([k,v])=>k+': '+v).join(', ')||'Belum ada'}. Tidak ada konektivitas otomatis terverifikasi.`;$('autoList').replaceChildren();for(const a of S.auto.filter(a=>a.kind==='ocr_connector'||a.kind==='ocr_fuse_label').slice(0,25)){const b=document.createElement('button');b.textContent=`${a.kind}: ${a.label} (${Math.round(a.confidence*100)}%)`;b.onclick=()=>inspect('machine candidate',{...a,notes:'Belum diverifikasi oleh teknisi'});$('autoList').append(b)}S.annotations=await api(`/api/annotations?diagram=${S.diagram.id}`);S.paths=await api(`/api/paths?diagram=${S.diagram.id}`);S.terminals=await api(`/api/terminals?diagram=${S.diagram.id}`);S.links=await api(`/api/circuit-links?diagram=${S.diagram.id}`);list('annotations',S.annotations,'annotations');list('paths',S.paths,'paths');renderMappings();draw();$('status').textContent=`${S.annotations.length} anotasi • ${S.paths.length} jalur (manual)`}
-async function change(){S.mvp={summary:null,circuits:[],review_queue:[]};S.selectedMvpFuse=null;renderMvp();S.diagram=S.diagrams.find(d=>d.id===$('diagram').value);const img=$('diagramImg');img.src='/images/'+S.diagram.image_file;S.pending=[];fit();const decoded=typeof img.decode==='function'?img.decode():new Promise((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(new Error('Gambar tidak tersedia'));return;}img.addEventListener('load',resolve,{once:true});img.addEventListener('error',()=>reject(new Error('Gagal mengambil gambar')),{once:true});});const imagePromise=window.ActionProgress?window.ActionProgress.hold(decoded,'Menyiapkan gambar dan overlay diagram'):decoded;await Promise.all([refresh(),imagePromise]);draw()}
+async function change(){S.mvp={summary:null,circuits:[],review_queue:[]};S.selectedMvpFuse=null;renderMvp();S.diagram=S.diagrams.find(d=>d.id===$('diagram').value);
+const exampleOnly=S.diagram.id==='junction_block';
+$('loadMvp').disabled=!exampleOnly;
+$('buildTerminalAccuracy').disabled=!exampleOnly;
+$('buildBranchTrace').disabled=!exampleOnly;
+$('uploadInfo').textContent=exampleOnly
+  ? 'Junction Block example: saved six-fuse assisted review is available.'
+  : 'Uploaded/other diagram: manual mapping mode. Automated six-fuse inference is not available; please add annotations, manual paths, and terminals.';
+const img=$('diagramImg');img.src='/images/'+S.diagram.image_file;S.pending=[];fit();const decoded=typeof img.decode==='function'?img.decode():new Promise((resolve,reject)=>{if(img.complete){img.naturalWidth?resolve():reject(new Error('Gambar tidak tersedia'));return;}img.addEventListener('load',resolve,{once:true});img.addEventListener('error',()=>reject(new Error('Gagal mengambil gambar')),{once:true});});const imagePromise=window.ActionProgress?window.ActionProgress.hold(decoded,'Menyiapkan gambar dan overlay diagram'):decoded;await Promise.all([refresh(),imagePromise]);draw()}
 function mode(m){S.mode=m;S.pending=[];document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));$('finish').hidden=m!=='path';$('cancel').hidden=m!=='path';$('viewport').style.cursor=m==='pan'?'grab':'crosshair';draw()}
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>mode(b.dataset.mode));$('search').oninput=draw;$('diagram').onchange=change;$('reset').onclick=fit;function zoom(f,at){const v=$('viewport');const x=at?.[0]??v.clientWidth/2,y=at?.[1]??v.clientHeight/2;const old=S.scale;S.scale=Math.min(8,Math.max(.08,old*f));S.tx=x-(x-S.tx)*S.scale/old;S.ty=y-(y-S.ty)*S.scale/old;renderTransform()};$('zin').onclick=()=>zoom(1.25);$('zout').onclick=()=>zoom(.8);$('viewport').onwheel=e=>{e.preventDefault();const r=$('viewport').getBoundingClientRect();zoom(e.deltaY<0?1.15:.87,[e.clientX-r.left,e.clientY-r.top])};
 $('viewport').onpointerdown=e=>{if(e.button!==0)return;if(S.mode==='pan'){S.drag={x:e.clientX,y:e.clientY,tx:S.tx,ty:S.ty};$('viewport').setPointerCapture(e.pointerId)}};$('viewport').onpointermove=e=>{if(S.drag){S.tx=S.drag.tx+e.clientX-S.drag.x;S.ty=S.drag.ty+e.clientY-S.drag.y;renderTransform()}};$('viewport').onpointerup=()=>S.drag=null;
@@ -947,4 +955,55 @@ $('saveMvpSnapshot').onclick=async()=>{
  }catch(error){$('mvpInfo').textContent='Snapshot failed: '+error.message;
     window.ActionProgress?.reportError(error.message);
  }finally{b.disabled=false;}
+};
+
+
+// MVP 0.1: other cars can be reviewed MANUALLY via uploaded images.
+// The sample-specific six-fuse automatic proposal is intentionally disabled
+// for a new image. This import does not run OCR or guess any connectivity.
+$('uploadDiagram').onclick=()=>{$('uploadDiagramFile').click()};
+$('uploadDiagramFile').onchange=async(event)=>{
+ const input=event.target,file=input.files?.[0];if(!file)return;
+ const msg=$('uploadInfo'),button=$('uploadDiagram');
+ button.disabled=true;
+ try{
+   if(file.size>8*1024*1024)throw new Error('Max 8 MB PNG/JPEG file.');
+   if(!['image/png','image/jpeg'].includes(file.type))throw new Error('Use PNG or JPEG.');
+   const suggested=file.name.replace(/\.(png|jpe?g)$/i,'').replace(/[_-]+/g,' ').trim();
+   const title=prompt('Diagram title:',suggested||'Wiring diagram');
+   if(title===null)return;
+   const vehicle=prompt('Vehicle / model (optional):','Not specified');
+   if(vehicle===null)return;
+   msg.textContent='Reading selected image locally...';
+   const readPromise=new Promise((resolve,reject)=>{
+     const reader=new FileReader();
+     reader.onload=()=>resolve(reader.result);
+     reader.onerror=()=>reject(new Error('Could not read image'));
+     reader.readAsDataURL(file);
+   });
+   const dataURL=window.ActionProgress?
+     await window.ActionProgress.hold(readPromise,'Reading locally selected diagram image'):
+     await readPromise;
+   msg.textContent='Saving diagram to local AutoWiring workspace...';
+   const result=await api('/api/diagram-upload',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({title:title.trim(),vehicle:vehicle.trim(),
+       image_base64:dataURL})
+   });
+   S.diagrams=await api('/api/diagrams');
+   const select=$('diagram');select.replaceChildren();
+   for(const d of S.diagrams){
+     const option=document.createElement('option');option.value=d.id;
+     option.textContent=d.title;select.append(option);
+   }
+   select.value=result.id;
+   await change();
+   msg.textContent='Imported: '+result.title+
+     ' • manual visual mapping only • no old OCR/graph steps rerun.';
+ }catch(error){
+   msg.textContent='Import failed: '+error.message;
+   window.ActionProgress?.reportError(error.message);
+ }finally{
+   button.disabled=false;input.value='';
+ }
 };
