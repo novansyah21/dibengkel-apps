@@ -25,3 +25,5 @@
 .diagnostic-endpoint{stroke:#f2ce45;stroke-width:3;fill:rgba(242,206,69,.35);cursor:pointer}
 
 .continuity-gap{stroke:#f39c35;stroke-width:3;stroke-dasharray:5 5;pointer-events:none}
+
+.component-candidate{fill:#ffbd59;stroke:#573a0a;stroke-width:2;cursor:pointer}
