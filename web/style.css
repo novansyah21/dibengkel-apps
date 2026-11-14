@@ -93,3 +93,26 @@
 .corrected-junction-dot{stroke:#60ffc8;fill:rgba(12,173,116,.30);stroke-width:2;cursor:pointer}
 .corrected-terminal-lead{stroke:#32d3ff;stroke-width:3;fill:rgba(54,174,220,.15);cursor:pointer}
 .corrected-terminal-label{fill:#c2fff3;stroke:#143442;stroke-width:2;paint-order:stroke;font-size:13px;font-weight:700;pointer-events:none}
+
+
+/* v0.3.20: candidate circuit tree from existing diagram evidence. */
+.branch-trace-panel{background:#112a3c;border:2px solid #5ab6d0;border-radius:12px;padding:12px;margin:10px 0 13px}
+.branch-trace-panel h3{margin:0 0 8px;color:#c8f5ff;font-size:16px}
+.branch-trace-panel p{font-size:12px;line-height:1.45}
+.branch-trace-panel .primary-action{background:#106a88!important;min-height:44px}
+#branchTraceInfo{padding:8px 0;line-height:1.55;font-size:12px;overflow-wrap:anywhere}
+#branchTraceList{max-height:640px;overflow-y:auto}
+.branch-card{border:1px solid #426779;background:#1b3344;border-radius:9px;padding:9px;margin:9px 0}
+.branch-card.selected{outline:2px solid #b3efff}
+.branch-head{display:block;width:100%;white-space:normal;font-weight:bold;line-height:1.45;text-align:left}
+.branch-card .muted{font-size:11px;overflow-wrap:anywhere;padding:4px 0}
+.branch-main-text{padding:7px;border-left:3px solid #52e0ff;background:#143947;font-size:12px;margin:7px 0}
+.branch-branch{padding:8px;background:#272842;border-left:3px solid #ae83ff;margin:8px 0;border-radius:0 5px 5px 0}
+.branch-branch input,.branch-branch select,.branch-branch button{width:100%;box-sizing:border-box;margin:4px 0}
+.branch-dest{font-weight:bold;color:#e7d8ff;margin:2px 0 4px}
+.branch-ocr summary{font-size:12px;color:#c6d9ed;cursor:pointer}
+.branch-ocr pre{font-size:10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.branch-main-line{stroke:#5addfb;stroke-width:3;fill:none;stroke-dasharray:10 5;opacity:.88;cursor:pointer;pointer-events:stroke}
+.branch-offshoot-line{stroke:#ab7cff;stroke-width:3.5;fill:none;stroke-dasharray:5 4;opacity:.9;cursor:pointer;pointer-events:stroke}
+.branch-path-selected{stroke:#ffe08f!important;stroke-width:6!important}
+.branch-joint-ring{stroke:#ffb66c;fill:rgba(255,150,0,.10);stroke-width:2;pointer-events:none}

@@ -1,67 +1,60 @@
-# AutoWiring v0.3.19 — Fuse OCR & Pixel-aware Wiring Evidence
+# AutoWiring v0.3.20 — Multi-Branch Circuit Tracing
 
-**Satu klik, tidak mengulang proses lama.** AutoWiring v0.3.19 melanjutkan database v0.3.18. Hasil v0.3.16 → v0.3.18 di-reuse, bukan diproses ulang.
+**Fokus versi ini:** lanjut dari database v0.3.19 dan telusuri hipotesis jalur bercabang pada gambar Junction Block Suzuki SX4 yang sudah ada, tanpa mengulang OCR/segmentasi/analisis versi lama.
 
-## Jalankan
+## Cara menjalankan (Windows)
 
-Di PC Windows, **jangan hapus output/autowiring.db maupun sample_assets**. Jika ingin backup, salin file database sebelum checkout.
+**Gunakan folder dan database yang sama**. Jangan menghapus output/autowiring.db maupun sample_assets.
 
 ~~~powershell
 cd D:\dibengkelapp\AutoWiring-v0.3.3
 git fetch origin
-git switch --track origin/feature/v0.3.19
+git switch --track origin/feature/v0.3.20
 py viewer.py
 ~~~
 
-Buka http://127.0.0.1:8765 lalu **Ctrl + Shift + R** supaya JavaScript tidak menggunakan versi lama.
+Buka http://127.0.0.1:8765, lalu tekan **Ctrl + Shift + R** untuk memperbarui JavaScript dan CSS.
 
 1. Pilih **Junction Block**.
-2. Klik tombol paling atas **▶ Fix saved results (v0.3.19)**.
-3. Lihat ringkasan setiap fuse, OCR, kandidat lingkaran terminal yang sebelumnya unread, dan kandidat dot junction yang diberi tanda.
-4. Klik **Export v0.3.19 correction & evidence JSON**.
-5. File keluaran: **autowiring-junction_block-corrected-trace-v0319.json**.
+2. Klik tombol biru paling atas **▶ Continue saved analysis — 6 fuse & branches (v0.3.20)**.
+3. Periksa panel utama: enam kandidat fuse, main path (cyan), branch path (ungu), OCR terminal dan penanda continuation.
+4. Kalau perlu, gunakan **Save visual review** untuk menandai kecocokan **visual**. Review ini tidak memverifikasi koneksi listrik.
+5. Klik **Export v0.3.20 branches & evidence JSON**. Kirim **autowiring-junction_block-multi-branch-v0320.json** untuk evaluasi.
 
-**Jangan klik ulang** Automatic Analysis, Geometry Graph, Segmentation, Association, Terminal OCR, Gap Visual, Component Graph, maupun v0.3.17/v0.3.18. Semua hasil lama dibaca dari SQLite, tidak direbuild.
+Tidak perlu klik ulang tahapan v0.3.16–v0.3.19 maupun tombol Automatic Analysis, segmentation, independent OCR atau Component Graph.
 
-## Perbaikan akurasi berdasarkan hasil pengujian asli v0.3.18
+## Kemampuan tambahan
 
-### 1. Rescue rating MTR dari OCR lama
+### 6 kandidat fuse dari gambar yang sama
 
-Output v0.3.18 menyimpan teks OCR dari right_compact berupa **10A.** dan dari right_above berupa **10A**. Parser sebelumnya menolak rating itu. v0.3.19 mengizinkan tanda baca terminal dan menerima rating hanya jika **dua ROI berbeda** memberi hasil yang sama. Karena confidence mentah yang gagal tidak disimpan, statusnya adalah **corroborated_cached_raw_ocr_review_required**, bukan angka terverifikasi.
+Empat fuse (IG COIL, MTR, ABS, BACK) berasal dari run v0.3.19. Dua fuse **A/B dan IG1 SIG** ditambahkan melalui *source-locked visual anchor proposal* berdasarkan posisi label pada **gambar Junction Block yang sama persis**. Bukan klaim pendeteksi fuse generik atau inferensi tentang diagram kendaraan lain. Label/garis di posisi anchor dicocokkan ke piksel asli, rating kedua fuse dibaca menggunakan **targeted OCR baru hanya untuk dua row itu**. Semua tetap kandidat unverified.
 
-Kandidat rating lainnya ABS 10A, BACK 10A, dan IG COIL 15A berasal dari run v0.3.18 dan dipakai tanpa OCR ulang.
+Proses enam-fuse ini **dikunci ke SHA256 diagram sumber dan dimensi 1136×1598**. Jika gambar berbeda, aplikasi memberi pesan yang jelas dan tidak menerapkan koordinat dari diagram lain secara diam-diam.
 
-### 2. Rescue terminal ABS dari lingkaran yang sebelumnya unread
+### Branch-aware path proposals
 
-Independent circle detection sudah menyimpan lingkaran tak terbaca di sekitar endpoint ABS. v0.3.19 **tidak mengulang deteksi keseluruhan diagram**: hanya crop interior lingkaran yang sudah ada dibaca memakai OCR lokal baru, maksimal dua PSM. Bukti disimpan dalam JSON: crop, teks, confidence, dan status. Pada gambar sumber terminal **9** terlihat; aplikasi tidak memaksakan angka 9 apabila OCR baru gagal.
+- Mulai dari titik percabangan visual yang telah disimpan di v0.3.19; titik pada fuse baru ditinjau dari piksel asli secara lokal.
+- Melacak goresan vertikal ke atas/bawah, lalu berbelok ke horizontal jika garis berakhir dan mempunyai dukungan piksel yang konsisten.
+- **Tidak otomatis menyambung** garis yang hanya berpotongan; crossing tanpa dot tidak diartikan sebagai junction.
+- Nomor terminal menggunakan **lingkaran OCR tersimpan** dari v0.3.9 / v0.3.19. Hanya lingkaran yang sebelumnya unread pada cabang baru/terminal baru yang boleh di-OCR lagi secara **lokal**, disertai crop untuk review.
+- Jalur MTR yang menuju **kotak continuation 1** dibedakan dari terminal konektor nomor 1.
+- Header kolom konektor (E325, G271, G272, L313, L315) dipakai hanya sebagai **hint lokasi visual**; bukan bukti pinout.
 
-### 3. Label 21 untuk BACK bukan terminal
+### Idempotent cache
 
-Output BACK mengandung kandidat historis **21**. Pemeriksaan gambar menunjukkan lingkaran 21 berada di sekitar simbol fuse di kiri, bukan di kolom konektor. Di sisi kanan ada terminal **14**. Algoritma menggunakan posisi lingkaran dari **semua run OCR tersimpan**, termasuk run historis, untuk menandai 21 sebagai kemungkinan **fuse index circle**, bukan secara diam-diam menghilangkan bukti.
+Fingerprint SQLite menggunakan ID run v0.3.19, ID OCR lingkaran, SHA256 gambar dan versi algoritma. Klik kedua kali dengan input sama menjadi **cache_hit=true** dan tidak melakukan OCR tambahan. Review visual manual hanya menulis tabel review sendiri.
 
-### 4. Pixel-aware dot-junction evidence
+### Batas ketepatan
 
-v0.3.18 masih single_segment untuk semua jalur. v0.3.19 membaca piksel asli sepanjang segmen horizontal yang tersimpan, mencari **titik hitam padat dengan goresan vertikal panjang**. Ini membantu mengidentifikasi kandidat titik percabangan, **bukan** membuktikan koneksi listrik. Perpotongan garis tipis tanpa titik dan tepi kotak putus-putus difilter berdasarkan kepadatan titik dan panjang goresan.
+**Semua hasil adalah VISUAL/GEOMETRIC HYPOTHESES.** Bahkan jika garis pada gambar, fuse symbol, junction dot dan lingkaran terminal terlihat menyambung, aplikasi **tidak** mengklaim ada hubungan listrik yang diverifikasi: **electrically_verified_connections = 0**.
 
-Garis cabang hasil inspeksi adalah overlay hijau putus-putus, tidak menyambung graph otomatis.
+Gambar ini hanya satu contoh referensi, bukan general purpose wiring-netlist parser, dan vehicle applicability masih unverified. Jalur/fuse baru tidak boleh otomatis dikonversi ke hasil pemeriksaan teknisi tanpa validasi sumber dan konektivitas.
 
-### 5. Header connector sebagai referensi kolom visual
-
-Pada Junction Block sampel berukuran 1136×1598, header BCM, E323 hingga L315 ditranskripsikan sebagai referensi geometri. Hasil seperti **E325? / 9?** hanya merupakan **visual region hint**, tidak membuktikan kepemilikan pin atau pinout. Fitur ini hanya berlaku untuk diagram junction_block dan rasio gambar yang sesuai.
-
-## Incremental processing, ketepatan, dan keselamatan
-
-- Satu klik v0.3.19 membaca database dan mengerjakan **fokus OCR baru hanya untuk kandidat terminal yang belum terbaca**, jika ada, serta menginspeksi piksel sumber.
-- SHA256 gambar, versi algoritma, dan run lama dimasukkan ke fingerprint. Klik ulang dengan input tidak berubah menghasilkan **cache_hit=true**, tanpa menjalankan OCR ulang.
-- Jika gambar asli tidak sama dengan sumber analisis sebelumnya, proses dihentikan agar geometri lama tidak dianggap masih berlaku.
-- Semua segmen, konektor, fuse, terminal, dan dot junction adalah **kandidat visual/geometris**.
-- **electrically_verified_connections = 0**, sampai ada validasi teknis dan pinout yang sesuai.
-
-## Tes otomatis
+## Otomatisasi pengujian
 
 ~~~powershell
 py -m pip install "Pillow>=10,<13"
-py -m unittest discover -s tests -p "test_trace_*.py" -v
+py -m unittest discover -s tests -p "test_*trac*.py" -v
 ~~~
 
-GitHub Actions menjalankan Python/JS syntax check, tes SQLite migration, cached OCR rescue, focused terminal, dot-vs-crossing, konflik, dan cache. Evaluasi hasil di PC Windows dengan gambar asli tetap diperlukan.
+GitHub Actions menjalankan Python syntax, JavaScript syntax, migrasi SQLite, uji fungsional diagram sintetis dengan crossing tanpa dot, belokan, terminal OCR, continuation dan cache. Uji akhir pada gambar sumber asli dilakukan di PC dengan database user, kemudian dievaluasi lewat JSON ekspor.
