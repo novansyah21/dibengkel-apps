@@ -1,0 +1,24 @@
+name: AutoWiring v0.3.17 regression checks
+on:
+  push:
+    branches: [feature/v0.3.17]
+  pull_request:
+    branches: [feature/v0.3.16]
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile Python (no prior analysis executed)
+        run: python -m compileall -q autowiring viewer.py tests
+      - name: Verify JavaScript syntax
+        run: node --check web/app.js
+      - name: Test idempotent cached tracing and manual reviews
+        run: python -m unittest discover -s tests -p "test_trace_review.py" -v
