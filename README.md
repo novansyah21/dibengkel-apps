@@ -1,9 +1,9 @@
-# AutoWiring v0.3.11 — Fuse Recognition & Association Audit
+# AutoWiring v0.3.12 — Split Fuse Association + Localized A/B OCR
 
-Run `py viewer.py` and hard refresh http://127.0.0.1:8765.
+Run `py viewer.py` then hard refresh http://127.0.0.1:8765.
 
-After OCR/graph/segmentation and **Find candidate circuits**, select **Audit missing fuse labels**. Orange indicators show OCR-recognized fuse labels that were not included in v0.3.5 candidate associations, with nearby horizontal candidate segments shown dashed. Export the audit JSON for review.
+**To rebuild associations:** click **Find candidate circuits** again after upgrading. The updated association module now includes OCR-grounded split-token IG COIL labels from the fuse audit. Then click **Match fuse paths to OCR circles** again; existing v0.3.10 results are not retroactively modified.
 
-Supports direct and adjacent-token recognition for IG COIL and A/B CONT, without fabricating labels missing from source OCR. This is an **audit**, not automatic rewiring: it does not add associations, force terminal matches, infer crossings or verify continuity. If no IG COIL/A/B appears, upstream OCR failed and a localized OCR crop or manual review is required.
+**A/B CONT:** click **Scan A/B CONT (tile OCR)**. The backend performs overlapping-tile Tesseract OCR and displays green suggestions; inspect the image and export localized OCR JSON. Localized A/B OCR suggestions are NOT yet promoted to fuse associations. This deliberately avoids automatic false-positive wiring.
 
-Tables: fuse_audit_runs_v0311 and fuse_audit_items_v0311. Back up output/autowiring.db. Tests: `py -m unittest discover -s tests -v`.
+All results are geometric/OCR hypotheses. No connector-pin mapping, junction verification, or electrical continuity is asserted. Back up output/autowiring.db. Tests: `py -m unittest discover -s tests -v`.

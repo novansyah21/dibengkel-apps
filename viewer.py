@@ -1,4 +1,4 @@
-"""AutoWiring v0.3.11 local-only interactive diagram review server (stdlib)."""
+"""AutoWiring v0.3.12 local-only interactive diagram review server (stdlib)."""
 import argparse,json,mimetypes,sqlite3,shutil,uuid
 from pathlib import Path
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
@@ -13,6 +13,7 @@ from autowiring.evidence import SCHEMA as EVIDENCE_SCHEMA,build as build_evidenc
 from autowiring.independent_ocr import SCHEMA as INDEPENDENT_SCHEMA,build as build_independent,latest as latest_independent
 from autowiring.path_matching import SCHEMA as PATHMATCH_SCHEMA,build as build_pathmatches,latest as latest_pathmatches
 from autowiring.fuse_audit import SCHEMA as FUSE_AUDIT_SCHEMA,build as build_fuse_audit,latest as latest_fuse_audit
+from autowiring.localized_ocr import SCHEMA as LOCAL_OCR_SCHEMA,build as build_local_ocr,latest as latest_local_ocr
 
 ROOT=Path(__file__).resolve().parent
 SCHEMA="""
@@ -25,7 +26,7 @@ CREATE TABLE IF NOT EXISTS viewer_circuit_links(id TEXT PRIMARY KEY,diagram_id T
 SEEDS=[('junction_block','Junction Block — fuse and terminal map','c9954639ad0fb133cedb.png',1136,1598),('abbreviations','Abbreviation reference','17ba65f18296c7320c58.png',640,316),('bcm_wiring','BCM internal wiring / harness','a6c3c83161c162401c88.png',1248,1512)]
 
 def setup(db):
- db.executescript(SCHEMA + AUTO_SCHEMA + GRAPH_SCHEMA + SEG_SCHEMA + ASSOC_SCHEMA + TERMINAL_SCHEMA + CIRCLE_SCHEMA + EVIDENCE_SCHEMA + INDEPENDENT_SCHEMA + PATHMATCH_SCHEMA + FUSE_AUDIT_SCHEMA)
+ db.executescript(SCHEMA + AUTO_SCHEMA + GRAPH_SCHEMA + SEG_SCHEMA + ASSOC_SCHEMA + TERMINAL_SCHEMA + CIRCLE_SCHEMA + EVIDENCE_SCHEMA + INDEPENDENT_SCHEMA + PATHMATCH_SCHEMA + FUSE_AUDIT_SCHEMA + LOCAL_OCR_SCHEMA)
  for id,title,file,w,h in SEEDS:
   db.execute('INSERT OR IGNORE INTO viewer_diagrams(id,title,image_file,width,height,source_url,vehicle) VALUES(?,?,?,?,?,?,?)',(id,title,file,w,h,'https://charm.li/','Suzuki SX4 2007 2WD L4-2.0L (source context, unverified)'))
  db.commit()
@@ -47,6 +48,9 @@ def run(port,dbpath):
     return [dict(x) for x in db.execute(sql,args)]
   def do_GET(self):
    url=urlparse(self.path);p=url.path
+   if p=='/api/local-ocr':
+    d=parse_qs(url.query).get('diagram',[''])[0]
+    return self.send(200,latest_local_ocr(dbpath,d))
    if p=='/api/fuse-audit':
     d=parse_qs(url.query).get('diagram',[''])[0]
     return self.send(200,latest_fuse_audit(dbpath,d))
@@ -116,6 +120,9 @@ def run(port,dbpath):
    try:
     p=urlparse(self.path).path;v=self.body();diagram=v.get('diagram_id','')
     if not self.query('SELECT id FROM viewer_diagrams WHERE id=?',(diagram,)):raise ValueError('unknown diagram')
+    if p=='/api/local-ocr-build':
+     info=self.query('SELECT image_file FROM viewer_diagrams WHERE id=?',(diagram,))[0]
+     return self.send(201,build_local_ocr(dbpath,diagram,ROOT/'sample_assets'/info['image_file']))
     if p=='/api/fuse-audit-build':
      return self.send(201,build_fuse_audit(dbpath,diagram))
     if p=='/api/path-match-build':
@@ -192,7 +199,7 @@ def run(port,dbpath):
     try:cursor=db.execute(f'DELETE FROM {table} WHERE id=?',(p[3],));db.commit()
     except sqlite3.IntegrityError:return self.send(409,{'error':'Item is referenced by terminals or circuit links; delete references first'})
    return self.send(200,{'deleted':cursor.rowcount})
- print(f'AutoWiring v0.3.11 at http://127.0.0.1:{port} | DB: {dbpath}')
+ print(f'AutoWiring v0.3.12 at http://127.0.0.1:{port} | DB: {dbpath}')
  ThreadingHTTPServer(('127.0.0.1',port),Handler).serve_forever()
 
 if __name__=='__main__':
