@@ -246,6 +246,7 @@ def build(dbpath,diagram_id,image_path,reader=None):
                 evidence["previous_ocr_conflict"]={
                     "raw":t["old_number"],"ocr_confidence":t["old_confidence"],
                     "human_transcribed_visual_reference":ref}
+            evidence["circle_center"]=[round(float(circle["x"]),7),round(float(circle["y"]),7)]
             evidence["comparison_status"]=outcome
             evidence["electrically_verified"]=False
             rows.append((uuid.uuid4().hex,run_id,t["fuse"],t["kind"],t["key"],
