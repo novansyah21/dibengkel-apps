@@ -241,3 +241,28 @@ main{position:relative}
 .diagnosis-empty{background:#293b4d;padding:10px;border-radius:7px}
 .diagnosis-warning,.diagnosis-missing{font-size:11px;line-height:1.5;
   color:#ffdfb2;background:#513d2b;border:1px solid #b38751;padding:9px;border-radius:6px}
+
+/* v0.4.2: vehicle-first library, empty state and PDF workflow */
+#stage[hidden],#viewerEmpty[hidden]{display:none!important}
+#viewerEmpty{
+  display:flex;align-items:center;justify-content:center;min-height:220px;
+  padding:28px;text-align:center;max-width:560px;margin:auto;
+  color:#a7bac8;line-height:1.6;font-size:1.02rem;
+}
+.vehicle-first-header,.pdf-vehicle-workflow{
+  border:1px solid #415565;border-radius:9px;padding:12px;
+  margin:12px 0;background:rgba(40,61,80,.18)
+}
+.vehicle-first-header select,.pdf-vehicle-workflow select{
+  width:100%;max-width:100%;margin:5px 0 9px;
+}
+.vehicle-first-header button,.pdf-vehicle-workflow button{
+  margin:5px 3px 9px 0;max-width:100%
+}
+#documentSearchStatus,#pdfWorkflowStatus{
+  margin:8px 0;padding:7px 9px;line-height:1.5;
+  border-left:3px solid #73cde2;background:rgba(56,120,140,.12);
+}
+.pdf-vehicle-workflow label{display:block;margin-top:10px}
+.pdf-vehicle-workflow input[type=checkbox]{width:auto;margin-right:7px}
+.pdf-vehicle-workflow input[type=number]{max-width:110px}
