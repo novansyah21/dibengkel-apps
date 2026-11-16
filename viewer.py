@@ -1,4 +1,4 @@
-"""AutoWiring v0.4.0 multi-vehicle diagnostic beta interactive diagram review server (stdlib)."""
+"""AutoWiring v0.4.1 multi-vehicle diagnostic beta with local PDF source library."""
 import argparse,json,mimetypes,sqlite3,shutil,uuid,re
 from pathlib import Path
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
@@ -353,7 +353,7 @@ def run(port,dbpath):
     try:cursor=db.execute(f'DELETE FROM {table} WHERE id=?',(p[3],));db.commit()
     except sqlite3.IntegrityError:return self.send(409,{'error':'Item is referenced by terminals or circuit links; delete references first'})
    return self.send(200,{'deleted':cursor.rowcount})
- print(f'AutoWiring v0.4.0 beta at http://127.0.0.1:{port} | DB: {dbpath}')
+ print(f'AutoWiring v0.4.1 PDF Source Library at http://127.0.0.1:{port} | DB: {dbpath}')
  ThreadingHTTPServer(('127.0.0.1',port),Handler).serve_forever()
 
 if __name__=='__main__':
