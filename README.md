@@ -1,6 +1,37 @@
-# AutoWiring v0.4.1 — Multi-Vehicle & PDF Source Library
+# AutoWiring v0.4.2 — Vehicle-First PDF Viewer
 
 **Status produk:** viewer dan manual wiring-map untuk diagram mobil apa pun, OCR/CV universal sebagai **kandidat visual**, katalog kendaraan, dan diagnosis awal kelistrikan 12V **berdasarkan gejala dan bukti pengukuran**. Aplikasi belum dapat membuktikan netlist listrik seluruh kendaraan atau menetapkan penyebab kerusakan otomatis dari gambar saja.
+
+## v0.4.2 — Vehicle-First PDF Viewer (beta)
+
+This release fixes the misleading impression that changing the vehicle automatically changed the document. **Vehicle and document selection are now connected by exact metadata**; there is **no fallback** to a different brand/model/year/variant or to the sample Suzuki SX4 diagram.
+
+### Setup on Windows
+
+~~~powershell
+cd D:\dibengkelapp\AutoWiring-v0.3.3
+git fetch origin
+git switch --track origin/feature/v0.4.2-vehicle-first-pdf-viewer
+py -m pip install pymupdf pillow
+py viewer.py
+~~~
+
+If the branch exists already, use `git switch feature/v0.4.2-vehicle-first-pdf-viewer` and `git pull --ff-only`. Refresh http://127.0.0.1:8765 with Ctrl+Shift+R.
+
+### How to use
+
+1. In **Pilih kendaraan dahulu** select brand, body type, model, year, variant and powertrain. The **Wiring diagram tersedia** dropdown lists only diagrams linked to that exact selection.
+2. If none is available, the image viewer explicitly says **Belum tersedia diagram** instead of silently showing an unrelated old diagram.
+3. Click **Simpan profil kendaraan & cari dokumen** to create a reusable vehicle profile. This no longer associates the current diagram with it.
+4. Archive a PDF that you have permission to store (using `py pdf_sources.py add-local` or the authorized batch importer), then click **Refresh sumber & PDF tersimpan**.
+5. Choose the saved PDF under **PDF lokal yang ingin dikaitkan**, select the electrical system, confirm the document's exact vehicle/variant/year/market applicability, and click **Hubungkan PDF ke kendaraan**.
+6. Under **PDF yang sudah dikaitkan**, select the file. Use **Buka PDF asli** to find the relevant wiring page. **Nomor halaman starts at 1**. Click **Tampilkan halaman PDF di diagram viewer**. The program extracts exactly one PNG, reuses it on subsequent requests, and automatically selects it as the active diagram.
+7. For an already-uploaded PNG/JPEG, select it under **Diagram upload yang belum diklasifikasi**, confirm applicability, and click **Hubungkan gambar upload ke kendaraan**.
+8. To browse the three original built-in sample diagrams, click **Lihat sampel lama** explicitly. They remain available for the legacy six-fuse review but are **never** returned from vehicle-specific search.
+
+The renderer uses PyMuPDF locally; a missing dependency produces an actionable error. Page count is limited to 3,000 pages, and single-page images are bounded to 4,000 px/edge and 12 MP. No automatic bulk import occurs. The library remains `output/pdf_library/`, with extracted images in `sample_assets/pdf_*.png` and metadata in the existing `output/autowiring.db`; no reset is required.
+
+**Safety/accuracy:** Vehicle match means **user-confirmed metadata**, not a manufacturer-approved variant, connector-pinout or electrical-continuity verification. Country, engine, trim and transmission differences still need expert source review. Selecting a vehicle never downloads a manual from the internet, and merely selecting a document never triggers an unverified connection. The features are local-only beta, not full automated diagnosis.
 
 ## v0.4.1 — PDF Source Library (rights-aware)
 

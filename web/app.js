@@ -1,13 +1,19 @@
 const $=id=>document.getElementById(id);const S={diagrams:[],diagram:null,annotations:[],paths:[],mode:'pan',scale:1,tx:0,ty:0,pending:[],point:null,drag:null,terminals:[],links:[],auto:[],graph:{run:null,edges:[],events:[],label_links:[]},selectedEdge:null,segmentation:{run:null,edges:[]},associations:{run:null,candidates:[]},selectedAssociation:null,terminalCandidates:{run:null,candidates:[]},circleCandidates:{run:null,candidates:[]},evidence:{run:null,circles:[]},independent:{run:null,circles:[]},pathMatches:{run:null,matches:[]},fuseAudit:{run:null,items:[]},localOCR:{run:null,items:[]},diagnostics:{run:null,items:[]},continuity:{run:null,items:[]},targeted:{run:null,items:[]},gapVisual:{run:null,items:[]},components:{run:null,items:[]},trace:{run:null,items:[]},selectedTrace:null,enhanced:{run:null,items:[]},selectedEnhanced:null,corrected:{run:null,items:[]},selectedCorrected:null,branchesV0320:{run:null,items:[]},selectedBranchFuse:null,terminalAccuracy:{run:null,items:[]},selectedAccuracyTarget:null,mvp:{summary:null,circuits:[],review_queue:[]},selectedMvpFuse:null,vehicleCatalog:{brands:[],models:[],vehicle_types:[]},vehicleProfiles:[],vehicleBinding:null,universalScan:null,diagnosis:null};const api=async(url,opts)=>{const r=await fetch(url,opts);const j=await r.json();if(!r.ok)throw Error(j.error||'request failed');return j};const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function size(){const d=S.diagram;return {w:d.width,h:d.height}}function renderTransform(){const st=$('stage');st.style.width=S.diagram.width+'px';st.style.height=S.diagram.height+'px';st.style.transform=`translate(${S.tx}px,${S.ty}px) scale(${S.scale})`;}
-function fit(){const v=$('viewport'),d=S.diagram;S.scale=Math.min((v.clientWidth-40)/d.width,(v.clientHeight-40)/d.height,1.5);S.tx=(v.clientWidth-d.width*S.scale)/2;S.ty=(v.clientHeight-d.height*S.scale)/2;renderTransform()}
+function fit(){if(!S.diagram)return;const v=$('viewport'),d=S.diagram;S.scale=Math.min((v.clientWidth-40)/d.width,(v.clientHeight-40)/d.height,1.5);S.tx=(v.clientWidth-d.width*S.scale)/2;S.ty=(v.clientHeight-d.height*S.scale)/2;renderTransform()}
 function point(ev){const r=$('viewport').getBoundingClientRect();return [(ev.clientX-r.left-S.tx)/S.scale/S.diagram.width,(ev.clientY-r.top-S.ty)/S.scale/S.diagram.height].map(x=>Math.max(0,Math.min(1,x)))}
 function svg(tag,attrs){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el}
-function draw(){const overlay=$('overlay');overlay.replaceChildren();overlay.setAttribute('viewBox',`0 0 ${S.diagram.width} ${S.diagram.height}`);const search=$('search').value.toLowerCase();for(const a of S.annotations){if(search&&!`${a.label} ${a.kind} ${a.notes}`.toLowerCase().includes(search))continue;const el=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:Math.max(a.w*S.diagram.width,15),height:Math.max(a.h*S.diagram.height,15),rx:3,class:'box'});el.addEventListener('click',e=>{e.stopPropagation();inspect('annotations',a)});overlay.append(el)}for(const p of S.paths){if(search&&!`${p.label} ${p.notes}`.toLowerCase().includes(search))continue;const el=svg('polyline',{points:p.points.map(q=>`${q[0]*S.diagram.width},${q[1]*S.diagram.height}`).join(' '),class:'wire'});el.addEventListener('click',e=>{e.stopPropagation();inspect('paths',p)});overlay.append(el)}if($('autoOverlay').checked){for(const a of S.auto){const kind=a.kind;const visible=kind==='ocr_connector'?$('layerConnectors').checked:kind==='ocr_fuse_label'?$('layerFuses').checked:kind==='line_segment_candidate'?$('layerLines').checked:$('layerText').checked;if(!visible)continue;if(search&&!`${a.label} ${a.kind}`.toLowerCase().includes(search))continue;const box=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:Math.max(a.w*S.diagram.width,3),height:Math.max(a.h*S.diagram.height,3),class:'auto-box'});box.addEventListener('click',e=>{e.stopPropagation();inspect('machine candidate',{...a,notes:'OCR/CV proposal only; connectivity not verified.'})});overlay.append(box)}}if($('layerGraph').checked){for(const e of S.graph.edges){const el=svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:e.id===S.selectedEdge?'graph-edge selected-wire':'graph-edge'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('geometry candidate',{label:e.axis,verification:e.verification,id:e.id,notes:'Segmen visual, bukan kontinuitas listrik terverifikasi.'})});overlay.append(el)}}if(S.segmentation.edges.length){for(const e of S.segmentation.edges){if(e.classification==='candidate_wire'&&!$('layerSegmented').checked)continue;if(e.classification==='excluded_structural'&&!$('layerExcluded').checked)continue;const el=svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:e.classification==='candidate_wire'?'segment-wire':'segment-excluded'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('segmentation',{label:e.region,kind:e.classification,verification:e.verification,notes:e.reason,id:e.id})});overlay.append(el)}}if($('layerMvp').checked){for(const fuse of S.mvp.circuits){const w=S.diagram.width,h=S.diagram.height;const selected=S.selectedMvpFuse===fuse.fuse_label;const line=(route,cls)=>{const pts=route?.points||[];if(pts.length<2)return;const el=svg('polyline',{points:pts.map(p=>p[0]*w+','+p[1]*h).join(' '),class:cls+(selected?' mvp-selected-path':'')});el.addEventListener('click',e=>{e.stopPropagation();S.selectedMvpFuse=fuse.fuse_label;renderMvp();draw();inspect('MVP visual candidate',{label:fuse.fuse_label,kind:'unverified path',notes:JSON.stringify(route),verification:'unverified'})});overlay.append(el)};line(fuse.main,'mvp-main-line');for(const branch of fuse.branches)line(branch,'mvp-branch-line')}}if($('layerTerminalAccuracy').checked){for(const item of S.terminalAccuracy.items){const point=item.evidence?.circle_center;if(!point)continue;const active=S.selectedAccuracyTarget===item.path_key;const mark=svg('circle',{cx:point[0]*S.diagram.width,cy:point[1]*S.diagram.height,r:active?15:11,class:'terminal-accuracy-ring'+(active?' active':'')});mark.addEventListener('click',e=>{e.stopPropagation();S.selectedAccuracyTarget=item.path_key;renderTerminalAccuracy();draw();inspect('v0.3.21 reviewed terminal',{label:item.fuse_label+' '+item.path_kind,kind:item.ocr_status,verification:'unverified',notes:JSON.stringify(item.evidence),id:item.id})});overlay.append(mark)}}if($('layerBranchTrace').checked){for(const a of S.branchesV0320.items){const active=S.selectedBranchFuse===a.fuse_label;const w=S.diagram.width,h=S.diagram.height;const drawRoute=(route,cls)=>{const pts=route?.points||[];if(pts.length<2)return;const line=svg('polyline',{points:pts.map(p=>p[0]*w+','+p[1]*h).join(' '),class:cls+(active?' branch-path-selected':'')});line.addEventListener('click',e=>{e.stopPropagation();S.selectedBranchFuse=a.fuse_label;renderBranchTrace();draw();inspect('v0.3.20 geometric branch',{label:a.fuse_label,kind:route.kind,verification:'unverified',notes:JSON.stringify(route),id:a.id})});overlay.append(line)};drawRoute(a.main_path,'branch-main-line');for(const br of a.branches){drawRoute(br,'branch-offshoot-line');if(br.points?.length>1){const joint=br.points[0];const circle=svg('circle',{cx:joint[0]*w,cy:joint[1]*h,r:5,class:'branch-joint-ring'});overlay.append(circle)}}}}if($('layerCorrected').checked){for(const a of S.corrected.items){for(const j of a.junction_dots){const pts=j.branch_preview_points;if(pts?.length===2){overlay.append(svg('line',{x1:pts[0][0]*S.diagram.width,y1:pts[0][1]*S.diagram.height,x2:pts[1][0]*S.diagram.width,y2:pts[1][1]*S.diagram.height,class:'corrected-branch-stub'}))}const dot=svg('circle',{cx:j.x*S.diagram.width,cy:j.y*S.diagram.height,r:7,class:'corrected-junction-dot'});dot.addEventListener('click',ev=>{ev.stopPropagation();S.selectedCorrected=a.component_id;renderCorrected();inspect('visual dot junction hypothesis',{label:a.fuse_label,kind:j.status,verification:'unverified',notes:JSON.stringify(j),id:a.id})});overlay.append(dot)}const c=a.terminal_evidence?.best_geometric_candidate;if(c){const circle=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:8,class:'corrected-terminal-lead'});circle.addEventListener('click',ev=>{ev.stopPropagation();S.selectedCorrected=a.component_id;renderCorrected();inspect('geometric terminal lead',{label:a.fuse_label+' to '+c.number,kind:a.terminal_evidence.status,verification:'unverified',notes:JSON.stringify(a.terminal_evidence),id:a.id})});overlay.append(circle);const col=a.terminal_evidence.connector_column_candidate?.label;const txt=svg('text',{x:c.x*S.diagram.width+10,y:c.y*S.diagram.height-9,class:'corrected-terminal-label'});txt.textContent=(col?col+'? ':'')+c.number+'?';overlay.append(txt)}}}if($('layerEnhanced').checked){for(const a of S.enhanced.items){const pts=a.route?.points||[];if(pts.length>=2){const el=svg('polyline',{points:pts.map(p=>p[0]*S.diagram.width+','+p[1]*S.diagram.height).join(' '),class:'enhanced-wire'+(S.selectedEnhanced===a.component_id?' enhanced-wire-selected':'')});el.addEventListener('click',ev=>{ev.stopPropagation();S.selectedEnhanced=a.component_id;renderEnhanced();draw();inspect('v0.3.18 visual hypothesis',{label:a.fuse_label,kind:a.trace_status,verification:'unverified',notes:a.warning,id:a.id})});overlay.append(el)}}}if($('layerTrace').checked){for(const a of S.trace.items){const pts=a.trace?.points||[];if(pts.length>=2){const el=svg('polyline',{points:pts.map(p=>p[0]*S.diagram.width+','+p[1]*S.diagram.height).join(' '),class:'smart-trace-line'+(S.selectedTrace===a.component_id?' smart-trace-selected':'')});el.addEventListener('click',ev=>{ev.stopPropagation();S.selectedTrace=a.component_id;renderTrace();draw();inspect('cached geometric trace',{label:a.fuse_label,kind:a.trace_status,verification:'unverified',notes:a.trace_reason,id:a.id})});overlay.append(el)}if(a.terminal_circle_id){const c=S.independent.circles.find(x=>x.id===a.terminal_circle_id);if(c){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(5,c.r*Math.max(S.diagram.width,S.diagram.height)),class:'smart-trace-terminal'});overlay.append(el)}}}}if($('layerComponents').checked){for(const a of S.components.items){const el=svg('rect',{x:a.x*S.diagram.width-8,y:a.y*S.diagram.height-8,width:16,height:16,class:'component-candidate'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('fuse symbol candidate',{label:a.fuse_label,kind:a.component_type,verification:'unverified',notes:JSON.stringify(a.graph_preview),id:a.id})});overlay.append(el)}}if($('layerContinuity').checked){for(const a of S.continuity.items){overlay.append(svg('line',{x1:a.endpoint_x*S.diagram.width,y1:a.endpoint_y*S.diagram.height,x2:a.neighbor_x*S.diagram.width,y2:a.neighbor_y*S.diagram.height,class:'continuity-gap'}))}}if($('layerDiagnostics').checked){for(const a of S.diagnostics.items){if(a.endpoint_x===null)continue;const el=svg('circle',{cx:a.endpoint_x*S.diagram.width,cy:a.endpoint_y*S.diagram.height,r:7,class:'diagnostic-endpoint'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('terminal diagnostic',{label:a.fuse_label,kind:a.reason,verification:'unverified',notes:JSON.stringify(a.candidates.slice(0,3)),id:a.id})});overlay.append(el)}}if($('layerLocalOCR').checked){for(const a of S.localOCR.items){const el=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:a.w*S.diagram.width,height:a.h*S.diagram.height,class:'local-ocr-box'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('localized OCR',{label:a.label,kind:'ocr_suggestion_unverified',verification:'unverified',notes:a.reason,id:a.id})});overlay.append(el)}}if($('layerFuseAudit').checked){for(const a of S.fuseAudit.items.filter(x=>x.status!=='already_associated')){const el=svg('circle',{cx:a.x*S.diagram.width,cy:a.y*S.diagram.height,r:10,class:'fuse-audit-label'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('fuse audit',{label:a.label,kind:a.status,verification:'unverified',notes:a.reason,id:a.id})});overlay.append(el);for(const id of a.edge_ids){const e=S.segmentation.edges.find(x=>x.source_edge_id===id);if(!e)continue;overlay.append(svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:'fuse-audit-edge'}))}}}if($('layerPathMatches').checked){for(const m of S.pathMatches.matches.filter(m=>m.circle_id)){const c=S.independent.circles.find(x=>x.id===m.circle_id);if(!c)continue;const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(6,c.r*Math.max(S.diagram.width,S.diagram.height)+4),class:'path-match-circle'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('geometric path candidate',{label:m.fuse_label+' → '+m.terminal_text,kind:'geometric_candidate_unverified',verification:'unverified',notes:m.reason+'; distance='+m.geometric_distance,id:m.id})});overlay.append(el)}}if($('layerIndependent').checked){for(const c of S.independent.circles.filter(c=>c.ocr_text)){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(4,c.r*Math.max(S.diagram.width,S.diagram.height)),class:'independent-read'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('independent OCR',{label:c.ocr_text,kind:'unassociated_circle_ocr',verification:'unverified',notes:c.reason+'; OCR '+Math.round(c.ocr_confidence*100)+'%',id:c.id})});overlay.append(el)}}if($('layerAllCircles').checked){for(const c of S.evidence.circles){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(4,c.r*Math.max(S.diagram.width,S.diagram.height)),class:c.status==='ocr_match_unverified'?'evidence-match':'evidence-rejected'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('circle audit',{label:c.ocr_text||'No OCR',kind:c.status,verification:'visual_evidence_unverified',notes:c.reason,id:c.id})});overlay.append(el)}}if($('layerCircleEvidence').checked){for(const c of S.circleCandidates.candidates){overlay.append(svg('circle',{cx:c.circle_x*S.diagram.width,cy:c.circle_y*S.diagram.height,r:Math.max(5,c.circle_r*Math.max(S.diagram.width,S.diagram.height)),class:'circle-evidence'}))}}if(S.selectedAssociation){const ids=new Set(S.selectedAssociation.edge_ids);for(const e of S.segmentation.edges){if(!ids.has(e.source_edge_id))continue;overlay.append(svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:'association-selected'}))}}if($('layerCrossings').checked){for(const ev of S.graph.events){const el=svg('circle',{cx:ev.x*S.diagram.width,cy:ev.y*S.diagram.height,r:4,class:'graph-crossing'});el.addEventListener('click',e=>{e.stopPropagation();inspect('crossing',{label:'Crossing: unknown',verification:ev.verification,id:ev.id,notes:'Persilangan ini tidak dianggap tersambung.'})});overlay.append(el)}}if(S.pending.length){overlay.append(svg('polyline',{points:S.pending.map(q=>`${q[0]*S.diagram.width},${q[1]*S.diagram.height}`).join(' '),class:'wire pending'}))}}
+function draw(){if(!S.diagram)return;const overlay=$('overlay');overlay.replaceChildren();overlay.setAttribute('viewBox',`0 0 ${S.diagram.width} ${S.diagram.height}`);const search=$('search').value.toLowerCase();for(const a of S.annotations){if(search&&!`${a.label} ${a.kind} ${a.notes}`.toLowerCase().includes(search))continue;const el=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:Math.max(a.w*S.diagram.width,15),height:Math.max(a.h*S.diagram.height,15),rx:3,class:'box'});el.addEventListener('click',e=>{e.stopPropagation();inspect('annotations',a)});overlay.append(el)}for(const p of S.paths){if(search&&!`${p.label} ${p.notes}`.toLowerCase().includes(search))continue;const el=svg('polyline',{points:p.points.map(q=>`${q[0]*S.diagram.width},${q[1]*S.diagram.height}`).join(' '),class:'wire'});el.addEventListener('click',e=>{e.stopPropagation();inspect('paths',p)});overlay.append(el)}if($('autoOverlay').checked){for(const a of S.auto){const kind=a.kind;const visible=kind==='ocr_connector'?$('layerConnectors').checked:kind==='ocr_fuse_label'?$('layerFuses').checked:kind==='line_segment_candidate'?$('layerLines').checked:$('layerText').checked;if(!visible)continue;if(search&&!`${a.label} ${a.kind}`.toLowerCase().includes(search))continue;const box=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:Math.max(a.w*S.diagram.width,3),height:Math.max(a.h*S.diagram.height,3),class:'auto-box'});box.addEventListener('click',e=>{e.stopPropagation();inspect('machine candidate',{...a,notes:'OCR/CV proposal only; connectivity not verified.'})});overlay.append(box)}}if($('layerGraph').checked){for(const e of S.graph.edges){const el=svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:e.id===S.selectedEdge?'graph-edge selected-wire':'graph-edge'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('geometry candidate',{label:e.axis,verification:e.verification,id:e.id,notes:'Segmen visual, bukan kontinuitas listrik terverifikasi.'})});overlay.append(el)}}if(S.segmentation.edges.length){for(const e of S.segmentation.edges){if(e.classification==='candidate_wire'&&!$('layerSegmented').checked)continue;if(e.classification==='excluded_structural'&&!$('layerExcluded').checked)continue;const el=svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:e.classification==='candidate_wire'?'segment-wire':'segment-excluded'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('segmentation',{label:e.region,kind:e.classification,verification:e.verification,notes:e.reason,id:e.id})});overlay.append(el)}}if($('layerMvp').checked){for(const fuse of S.mvp.circuits){const w=S.diagram.width,h=S.diagram.height;const selected=S.selectedMvpFuse===fuse.fuse_label;const line=(route,cls)=>{const pts=route?.points||[];if(pts.length<2)return;const el=svg('polyline',{points:pts.map(p=>p[0]*w+','+p[1]*h).join(' '),class:cls+(selected?' mvp-selected-path':'')});el.addEventListener('click',e=>{e.stopPropagation();S.selectedMvpFuse=fuse.fuse_label;renderMvp();draw();inspect('MVP visual candidate',{label:fuse.fuse_label,kind:'unverified path',notes:JSON.stringify(route),verification:'unverified'})});overlay.append(el)};line(fuse.main,'mvp-main-line');for(const branch of fuse.branches)line(branch,'mvp-branch-line')}}if($('layerTerminalAccuracy').checked){for(const item of S.terminalAccuracy.items){const point=item.evidence?.circle_center;if(!point)continue;const active=S.selectedAccuracyTarget===item.path_key;const mark=svg('circle',{cx:point[0]*S.diagram.width,cy:point[1]*S.diagram.height,r:active?15:11,class:'terminal-accuracy-ring'+(active?' active':'')});mark.addEventListener('click',e=>{e.stopPropagation();S.selectedAccuracyTarget=item.path_key;renderTerminalAccuracy();draw();inspect('v0.3.21 reviewed terminal',{label:item.fuse_label+' '+item.path_kind,kind:item.ocr_status,verification:'unverified',notes:JSON.stringify(item.evidence),id:item.id})});overlay.append(mark)}}if($('layerBranchTrace').checked){for(const a of S.branchesV0320.items){const active=S.selectedBranchFuse===a.fuse_label;const w=S.diagram.width,h=S.diagram.height;const drawRoute=(route,cls)=>{const pts=route?.points||[];if(pts.length<2)return;const line=svg('polyline',{points:pts.map(p=>p[0]*w+','+p[1]*h).join(' '),class:cls+(active?' branch-path-selected':'')});line.addEventListener('click',e=>{e.stopPropagation();S.selectedBranchFuse=a.fuse_label;renderBranchTrace();draw();inspect('v0.3.20 geometric branch',{label:a.fuse_label,kind:route.kind,verification:'unverified',notes:JSON.stringify(route),id:a.id})});overlay.append(line)};drawRoute(a.main_path,'branch-main-line');for(const br of a.branches){drawRoute(br,'branch-offshoot-line');if(br.points?.length>1){const joint=br.points[0];const circle=svg('circle',{cx:joint[0]*w,cy:joint[1]*h,r:5,class:'branch-joint-ring'});overlay.append(circle)}}}}if($('layerCorrected').checked){for(const a of S.corrected.items){for(const j of a.junction_dots){const pts=j.branch_preview_points;if(pts?.length===2){overlay.append(svg('line',{x1:pts[0][0]*S.diagram.width,y1:pts[0][1]*S.diagram.height,x2:pts[1][0]*S.diagram.width,y2:pts[1][1]*S.diagram.height,class:'corrected-branch-stub'}))}const dot=svg('circle',{cx:j.x*S.diagram.width,cy:j.y*S.diagram.height,r:7,class:'corrected-junction-dot'});dot.addEventListener('click',ev=>{ev.stopPropagation();S.selectedCorrected=a.component_id;renderCorrected();inspect('visual dot junction hypothesis',{label:a.fuse_label,kind:j.status,verification:'unverified',notes:JSON.stringify(j),id:a.id})});overlay.append(dot)}const c=a.terminal_evidence?.best_geometric_candidate;if(c){const circle=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:8,class:'corrected-terminal-lead'});circle.addEventListener('click',ev=>{ev.stopPropagation();S.selectedCorrected=a.component_id;renderCorrected();inspect('geometric terminal lead',{label:a.fuse_label+' to '+c.number,kind:a.terminal_evidence.status,verification:'unverified',notes:JSON.stringify(a.terminal_evidence),id:a.id})});overlay.append(circle);const col=a.terminal_evidence.connector_column_candidate?.label;const txt=svg('text',{x:c.x*S.diagram.width+10,y:c.y*S.diagram.height-9,class:'corrected-terminal-label'});txt.textContent=(col?col+'? ':'')+c.number+'?';overlay.append(txt)}}}if($('layerEnhanced').checked){for(const a of S.enhanced.items){const pts=a.route?.points||[];if(pts.length>=2){const el=svg('polyline',{points:pts.map(p=>p[0]*S.diagram.width+','+p[1]*S.diagram.height).join(' '),class:'enhanced-wire'+(S.selectedEnhanced===a.component_id?' enhanced-wire-selected':'')});el.addEventListener('click',ev=>{ev.stopPropagation();S.selectedEnhanced=a.component_id;renderEnhanced();draw();inspect('v0.3.18 visual hypothesis',{label:a.fuse_label,kind:a.trace_status,verification:'unverified',notes:a.warning,id:a.id})});overlay.append(el)}}}if($('layerTrace').checked){for(const a of S.trace.items){const pts=a.trace?.points||[];if(pts.length>=2){const el=svg('polyline',{points:pts.map(p=>p[0]*S.diagram.width+','+p[1]*S.diagram.height).join(' '),class:'smart-trace-line'+(S.selectedTrace===a.component_id?' smart-trace-selected':'')});el.addEventListener('click',ev=>{ev.stopPropagation();S.selectedTrace=a.component_id;renderTrace();draw();inspect('cached geometric trace',{label:a.fuse_label,kind:a.trace_status,verification:'unverified',notes:a.trace_reason,id:a.id})});overlay.append(el)}if(a.terminal_circle_id){const c=S.independent.circles.find(x=>x.id===a.terminal_circle_id);if(c){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(5,c.r*Math.max(S.diagram.width,S.diagram.height)),class:'smart-trace-terminal'});overlay.append(el)}}}}if($('layerComponents').checked){for(const a of S.components.items){const el=svg('rect',{x:a.x*S.diagram.width-8,y:a.y*S.diagram.height-8,width:16,height:16,class:'component-candidate'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('fuse symbol candidate',{label:a.fuse_label,kind:a.component_type,verification:'unverified',notes:JSON.stringify(a.graph_preview),id:a.id})});overlay.append(el)}}if($('layerContinuity').checked){for(const a of S.continuity.items){overlay.append(svg('line',{x1:a.endpoint_x*S.diagram.width,y1:a.endpoint_y*S.diagram.height,x2:a.neighbor_x*S.diagram.width,y2:a.neighbor_y*S.diagram.height,class:'continuity-gap'}))}}if($('layerDiagnostics').checked){for(const a of S.diagnostics.items){if(a.endpoint_x===null)continue;const el=svg('circle',{cx:a.endpoint_x*S.diagram.width,cy:a.endpoint_y*S.diagram.height,r:7,class:'diagnostic-endpoint'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('terminal diagnostic',{label:a.fuse_label,kind:a.reason,verification:'unverified',notes:JSON.stringify(a.candidates.slice(0,3)),id:a.id})});overlay.append(el)}}if($('layerLocalOCR').checked){for(const a of S.localOCR.items){const el=svg('rect',{x:a.x*S.diagram.width,y:a.y*S.diagram.height,width:a.w*S.diagram.width,height:a.h*S.diagram.height,class:'local-ocr-box'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('localized OCR',{label:a.label,kind:'ocr_suggestion_unverified',verification:'unverified',notes:a.reason,id:a.id})});overlay.append(el)}}if($('layerFuseAudit').checked){for(const a of S.fuseAudit.items.filter(x=>x.status!=='already_associated')){const el=svg('circle',{cx:a.x*S.diagram.width,cy:a.y*S.diagram.height,r:10,class:'fuse-audit-label'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('fuse audit',{label:a.label,kind:a.status,verification:'unverified',notes:a.reason,id:a.id})});overlay.append(el);for(const id of a.edge_ids){const e=S.segmentation.edges.find(x=>x.source_edge_id===id);if(!e)continue;overlay.append(svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:'fuse-audit-edge'}))}}}if($('layerPathMatches').checked){for(const m of S.pathMatches.matches.filter(m=>m.circle_id)){const c=S.independent.circles.find(x=>x.id===m.circle_id);if(!c)continue;const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(6,c.r*Math.max(S.diagram.width,S.diagram.height)+4),class:'path-match-circle'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('geometric path candidate',{label:m.fuse_label+' → '+m.terminal_text,kind:'geometric_candidate_unverified',verification:'unverified',notes:m.reason+'; distance='+m.geometric_distance,id:m.id})});overlay.append(el)}}if($('layerIndependent').checked){for(const c of S.independent.circles.filter(c=>c.ocr_text)){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(4,c.r*Math.max(S.diagram.width,S.diagram.height)),class:'independent-read'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('independent OCR',{label:c.ocr_text,kind:'unassociated_circle_ocr',verification:'unverified',notes:c.reason+'; OCR '+Math.round(c.ocr_confidence*100)+'%',id:c.id})});overlay.append(el)}}if($('layerAllCircles').checked){for(const c of S.evidence.circles){const el=svg('circle',{cx:c.x*S.diagram.width,cy:c.y*S.diagram.height,r:Math.max(4,c.r*Math.max(S.diagram.width,S.diagram.height)),class:c.status==='ocr_match_unverified'?'evidence-match':'evidence-rejected'});el.addEventListener('click',ev=>{ev.stopPropagation();inspect('circle audit',{label:c.ocr_text||'No OCR',kind:c.status,verification:'visual_evidence_unverified',notes:c.reason,id:c.id})});overlay.append(el)}}if($('layerCircleEvidence').checked){for(const c of S.circleCandidates.candidates){overlay.append(svg('circle',{cx:c.circle_x*S.diagram.width,cy:c.circle_y*S.diagram.height,r:Math.max(5,c.circle_r*Math.max(S.diagram.width,S.diagram.height)),class:'circle-evidence'}))}}if(S.selectedAssociation){const ids=new Set(S.selectedAssociation.edge_ids);for(const e of S.segmentation.edges){if(!ids.has(e.source_edge_id))continue;overlay.append(svg('line',{x1:e.x1*S.diagram.width,y1:e.y1*S.diagram.height,x2:e.x2*S.diagram.width,y2:e.y2*S.diagram.height,class:'association-selected'}))}}if($('layerCrossings').checked){for(const ev of S.graph.events){const el=svg('circle',{cx:ev.x*S.diagram.width,cy:ev.y*S.diagram.height,r:4,class:'graph-crossing'});el.addEventListener('click',e=>{e.stopPropagation();inspect('crossing',{label:'Crossing: unknown',verification:ev.verification,id:ev.id,notes:'Persilangan ini tidak dianggap tersambung.'})});overlay.append(el)}}if(S.pending.length){overlay.append(svg('polyline',{points:S.pending.map(q=>`${q[0]*S.diagram.width},${q[1]*S.diagram.height}`).join(' '),class:'wire pending'}))}}
 function inspect(type,obj){$('inspector').innerHTML=`<b>${esc(obj.label||obj.connector_label||obj.path_label)}</b><p>Jenis: ${esc(obj.kind||type)}</p><p>Status: ${esc(obj.verification)}</p><p>${esc(obj.notes||'Tanpa catatan')}</p><p class="muted">ID: ${esc(obj.id)}</p>`}
 function list(id,items,type){const el=$(id);el.replaceChildren();for(const x of items){const row=document.createElement('div');row.className='item';const b=document.createElement('button');b.textContent=x.label;b.onclick=()=>inspect(type,x);const del=document.createElement('button');del.className='delete';del.textContent='×';del.title='Hapus';del.onclick=async()=>{if(!confirm(`Hapus ${x.label}?`))return;await api(`/api/${type}/${x.id}`,{method:'DELETE'});await refresh()};row.append(b,del);el.append(row)}}
-async function refresh(){S.graph=await api(`/api/graph?diagram=${S.diagram.id}`);S.segmentation=await api(`/api/segmentation?diagram=${S.diagram.id}`);$('segmentInfo').textContent=S.segmentation.run?`${S.segmentation.run.candidate_wire_segments}/${S.segmentation.run.raw_segments} candidate segments • ${S.segmentation.run.excluded_structural_segments} excluded • ${S.segmentation.run.remaining_ambiguous_crossings} crossings • 0 verified connections`:'Segmentation not built';S.associations=await api(`/api/associations?diagram=${S.diagram.id}`);S.terminalCandidates=await api(`/api/terminal-candidates?diagram=${S.diagram.id}`);renderTerminalCandidates();S.circleCandidates=await api(`/api/circle-candidates?diagram=${S.diagram.id}`);renderCircleCandidates();S.evidence=await api(`/api/evidence?diagram=${S.diagram.id}`);renderEvidence();S.independent=await api(`/api/independent-ocr?diagram=${S.diagram.id}`);renderIndependent();S.pathMatches=await api(`/api/path-matches?diagram=${S.diagram.id}`);renderPathMatches();S.fuseAudit=await api(`/api/fuse-audit?diagram=${S.diagram.id}`);renderFuseAudit();S.localOCR=await api(`/api/local-ocr?diagram=${S.diagram.id}`);renderLocalOCR();S.diagnostics=await api(`/api/match-diagnostics?diagram=${S.diagram.id}`);renderDiagnostics();S.continuity=await api(`/api/continuity-audit?diagram=${S.diagram.id}`);renderContinuity();S.targeted=await api(`/api/targeted-ocr?diagram=${S.diagram.id}`);renderTargeted();S.gapVisual=await api(`/api/gap-visual?diagram=${S.diagram.id}`);renderGapVisual();S.components=await api(`/api/components?diagram=${S.diagram.id}`);renderComponents();S.trace=await api(`/api/trace?diagram=${S.diagram.id}`);renderTrace();S.enhanced=await api(`/api/enhanced-trace?diagram=${S.diagram.id}`);renderEnhanced();S.corrected=await api(`/api/corrected-trace?diagram=${S.diagram.id}`);renderCorrected();S.branchesV0320=await api(`/api/branch-trace?diagram=${S.diagram.id}`);renderBranchTrace();S.terminalAccuracy=await api(`/api/terminal-accuracy?diagram=${S.diagram.id}`);renderTerminalAccuracy();S.selectedAssociation=null;renderAssociations();S.selectedEdge=null;renderGraph();S.auto=await api(`/api/auto-candidates?diagram=${S.diagram.id}`);const kinds={};for(const a of S.auto)kinds[a.kind]=(kinds[a.kind]||0)+1;$('autoInfo').textContent=`${S.auto.length} kandidat • ${Object.entries(kinds).map(([k,v])=>k+': '+v).join(', ')||'Belum ada'}. Tidak ada konektivitas otomatis terverifikasi.`;$('autoList').replaceChildren();for(const a of S.auto.filter(a=>a.kind==='ocr_connector'||a.kind==='ocr_fuse_label').slice(0,25)){const b=document.createElement('button');b.textContent=`${a.kind}: ${a.label} (${Math.round(a.confidence*100)}%)`;b.onclick=()=>inspect('machine candidate',{...a,notes:'Belum diverifikasi oleh teknisi'});$('autoList').append(b)}S.annotations=await api(`/api/annotations?diagram=${S.diagram.id}`);S.paths=await api(`/api/paths?diagram=${S.diagram.id}`);S.terminals=await api(`/api/terminals?diagram=${S.diagram.id}`);S.links=await api(`/api/circuit-links?diagram=${S.diagram.id}`);list('annotations',S.annotations,'annotations');list('paths',S.paths,'paths');renderMappings();draw();$('status').textContent=`${S.annotations.length} anotasi • ${S.paths.length} jalur (manual)`}
-async function change(){S.mvp={summary:null,circuits:[],review_queue:[]};S.selectedMvpFuse=null;renderMvp();S.diagram=S.diagrams.find(d=>d.id===$('diagram').value);
+async function refresh(){const diagramId=S.diagram?.id;if(!diagramId)return;S.graph=await api(`/api/graph?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;S.segmentation=await api(`/api/segmentation?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;$('segmentInfo').textContent=S.segmentation.run?`${S.segmentation.run.candidate_wire_segments}/${S.segmentation.run.raw_segments} candidate segments • ${S.segmentation.run.excluded_structural_segments} excluded • ${S.segmentation.run.remaining_ambiguous_crossings} crossings • 0 verified connections`:'Segmentation not built';S.associations=await api(`/api/associations?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;S.terminalCandidates=await api(`/api/terminal-candidates?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderTerminalCandidates();S.circleCandidates=await api(`/api/circle-candidates?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderCircleCandidates();S.evidence=await api(`/api/evidence?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderEvidence();S.independent=await api(`/api/independent-ocr?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderIndependent();S.pathMatches=await api(`/api/path-matches?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderPathMatches();S.fuseAudit=await api(`/api/fuse-audit?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderFuseAudit();S.localOCR=await api(`/api/local-ocr?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderLocalOCR();S.diagnostics=await api(`/api/match-diagnostics?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderDiagnostics();S.continuity=await api(`/api/continuity-audit?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderContinuity();S.targeted=await api(`/api/targeted-ocr?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderTargeted();S.gapVisual=await api(`/api/gap-visual?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderGapVisual();S.components=await api(`/api/components?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderComponents();S.trace=await api(`/api/trace?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderTrace();S.enhanced=await api(`/api/enhanced-trace?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderEnhanced();S.corrected=await api(`/api/corrected-trace?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderCorrected();S.branchesV0320=await api(`/api/branch-trace?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderBranchTrace();S.terminalAccuracy=await api(`/api/terminal-accuracy?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;renderTerminalAccuracy();S.selectedAssociation=null;renderAssociations();S.selectedEdge=null;renderGraph();S.auto=await api(`/api/auto-candidates?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;const kinds={};for(const a of S.auto)kinds[a.kind]=(kinds[a.kind]||0)+1;$('autoInfo').textContent=`${S.auto.length} kandidat • ${Object.entries(kinds).map(([k,v])=>k+': '+v).join(', ')||'Belum ada'}. Tidak ada konektivitas otomatis terverifikasi.`;$('autoList').replaceChildren();for(const a of S.auto.filter(a=>a.kind==='ocr_connector'||a.kind==='ocr_fuse_label').slice(0,25)){const b=document.createElement('button');b.textContent=`${a.kind}: ${a.label} (${Math.round(a.confidence*100)}%)`;b.onclick=()=>inspect('machine candidate',{...a,notes:'Belum diverifikasi oleh teknisi'});$('autoList').append(b)}S.annotations=await api(`/api/annotations?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;S.paths=await api(`/api/paths?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;S.terminals=await api(`/api/terminals?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;S.links=await api(`/api/circuit-links?diagram=${diagramId}`);if(diagramId!==S.diagram?.id)return;list('annotations',S.annotations,'annotations');list('paths',S.paths,'paths');renderMappings();if(diagramId!==S.diagram?.id)return;draw();$('status').textContent=`${S.annotations.length} anotasi • ${S.paths.length} jalur (manual)`}
+async function change(){
+ if(!S.diagrams.length || !S.diagrams.some(d=>d.id===$('diagram').value)){
+   setVehicleViewerEmpty('Belum ada diagram terpilih. Pilih kendaraan yang memiliki dokumen atau impor PDF.');
+   return;
+ }
+ $('stage').hidden=false;$('viewerEmpty').hidden=true;
+ S.mvp={summary:null,circuits:[],review_queue:[]};S.selectedMvpFuse=null;renderMvp();S.diagram=S.diagrams.find(d=>d.id===$('diagram').value);
 const exampleOnly=S.diagram.id==='junction_block';
 $('loadMvp').disabled=!exampleOnly;
 $('buildTerminalAccuracy').disabled=!exampleOnly;
@@ -22,7 +28,15 @@ $('viewport').onpointerdown=e=>{if(e.button!==0)return;if(S.mode==='pan'){S.drag
 $('overlay').addEventListener('click',e=>{if(S.mode==='pan'||e.target!==$('overlay'))return;const p=point(e);if(S.mode==='annotation'){S.point=p;$('editor').showModal()}else{S.pending.push(p);draw()}});
 $('close').onclick=()=>$('editor').close();$('editForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await api('/api/annotations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({diagram_id:S.diagram.id,kind:f.get('kind'),label:f.get('label'),notes:f.get('notes'),x:S.point[0],y:S.point[1],w:.035,h:.025})});$('editor').close();e.target.reset();await refresh()}catch(err){alert(err.message)}};
 $('finish').onclick=async()=>{if(S.pending.length<2)return alert('Minimal dua titik');const label=prompt('Nama jalur (manual):');if(!label)return;try{await api('/api/paths',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({diagram_id:S.diagram.id,label,points:S.pending})});S.pending=[];await refresh()}catch(err){alert(err.message)}};$('cancel').onclick=()=>{S.pending=[];draw()};
-(async()=>{await refreshPdfLibrary();await initVehicleCatalog();await initDiagnosisOptions();S.diagrams=await api('/api/diagrams');for(const d of S.diagrams){const o=document.createElement('option');o.value=d.id;o.textContent=d.title;$('diagram').append(o)}$('diagram').value='junction_block';await change()})().catch(e=>{$('status').textContent=e.message});
+(async()=>{
+  await refreshPdfLibrary();
+  await initVehicleCatalog();
+  await initDiagnosisOptions();
+  S.allDiagrams=await api('/api/diagrams');
+  S.diagrams=[];
+  await initVehicleFirst();
+  setVehicleViewerEmpty('Pilih merk, model, tahun, varian dan penggerak untuk mencari wiring diagram.');
+})().catch(e=>{$('status').textContent=e.message;setVehicleViewerEmpty(e.message)});
 
 function options(el,items,fmt){el.replaceChildren();for(const item of items){const o=document.createElement('option');o.value=item.id;o.textContent=fmt(item);el.append(o)}}
 function mappingRow(container,title,detail,type,obj){const row=document.createElement('div');row.className='item';const b=document.createElement('button');b.textContent=title;b.title=detail;b.onclick=()=>{inspect(type,{...obj,label:title,notes:detail});if(type==='circuit-links'){const p=S.paths.find(x=>x.id===obj.path_id);if(p){$('search').value='';draw();const el=[...$('overlay').querySelectorAll('polyline')][S.paths.indexOf(p)];if(el){el.classList.add('selected-wire');setTimeout(()=>el.classList.remove('selected-wire'),3500)}}}};const del=document.createElement('button');del.className='delete';del.textContent='×';del.onclick=async()=>{if(!confirm('Hapus mapping ini?'))return;try{await api(`/api/${type}/${obj.id}`,{method:'DELETE'});await refresh()}catch(e){alert(e.message)}};row.append(b,del);container.append(row)}
@@ -1003,16 +1017,20 @@ $('uploadDiagramFile').onchange=async(event)=>{
      body:JSON.stringify({title:title.trim(),vehicle:vehicle.trim(),
        image_base64:dataURL})
    });
-   S.diagrams=await api('/api/diagrams');
-   const select=$('diagram');select.replaceChildren();
-   for(const d of S.diagrams){
-     const option=document.createElement('option');option.value=d.id;
-     option.textContent=d.title;select.append(option);
+   S.allDiagrams=await api('/api/diagrams');
+   const selected=selectedExactProfile();
+   if(selected && $('confirmPdfApplicability').checked){
+     await api('/api/diagram-classify',{
+       method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({diagram_id:result.id,profile_id:selected.id,
+         system:$('pdfElectricalSystem').value,confirmed_applicability:true})
+     });
+     await refreshVehicleDocuments(result.id);
+     msg.textContent='Gambar '+result.title+' diimpor dan dikaitkan ke kendaraan terpilih. Kecocokan teknis belum diverifikasi.';
+   }else{
+     await refreshVehicleDocuments();
+     msg.textContent='Gambar '+result.title+' diimpor tetapi BELUM dikaitkan. Simpan profil kendaraan, centang konfirmasi, lalu gunakan "Hubungkan gambar upload".';
    }
-   select.value=result.id;
-   await change();
-   msg.textContent='Imported: '+result.title+
-     ' • manual visual mapping only • no old OCR/graph steps rerun.';
  }catch(error){
    msg.textContent='Import failed: '+error.message;
    window.ActionProgress?.reportError(error.message);
@@ -1076,8 +1094,12 @@ async function initVehicleCatalog(preferredBrand,preferredModel){
  $('vehicleInfo').textContent=catalog.brands.length+' merk / '+
     catalog.models.length+' model awal. Varian & tahun dipilih manual; katalog ini tidak memverifikasi wiring kendaraan.';
 }
-$('vehicleBrand').onchange=()=>renderVehicleTypes();
-$('vehicleBodyType').onchange=()=>renderVehicleNames();
+$('vehicleBrand').onchange=()=>{renderVehicleTypes();queueVehicleLookup();};
+$('vehicleBodyType').onchange=()=>{renderVehicleNames();queueVehicleLookup();};
+$('vehicleModel').onchange=queueVehicleLookup;
+$('vehicleYear').onchange=queueVehicleLookup;
+$('vehicleVariant').oninput=queueVehicleLookup;
+$('vehiclePowertrain').onchange=queueVehicleLookup;
 async function loadVehicleBinding(){
  if(!S.diagram)return;
  S.vehicleBinding=await api('/api/vehicle-binding?diagram='+
@@ -1101,35 +1123,21 @@ async function loadVehicleBinding(){
 $('saveVehicle').onclick=async()=>{
  const button=$('saveVehicle');button.disabled=true;
  try{
-   const body={brand_id:$('vehicleBrand').value,model_id:$('vehicleModel').value,
-     year:$('vehicleYear').value,variant:$('vehicleVariant').value,
-     powertrain:$('vehiclePowertrain').value};
+   const body=currentVehicleQuery();
+   if(!body.brand_id||!body.model_id||!body.year)throw new Error('Pilih merk, model dan tahun dulu.');
    const saved=await api('/api/vehicle-profile',{
      method:'POST',headers:{'Content-Type':'application/json'},
      body:JSON.stringify(body)});
-   const attached=await api('/api/diagram-vehicle-bind',{
-     method:'POST',headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({diagram_id:S.diagram.id,profile_id:saved.id})});
    S.vehicleProfiles=await api('/api/vehicle-profiles');
-   S.vehicleBinding=attached;refreshSavedVehicles(saved.id);
-   $('vehicleInfo').textContent='✓ '+saved.brand_name+' '+saved.model_name+
-      ' '+saved.variant+' ('+saved.year+') terhubung. Kompatibilitas wiring belum tervalidasi.';
- }catch(error){$('vehicleInfo').textContent='Gagal simpan: '+error.message;
+   refreshSavedVehicles(saved.id);
+   $('vehicleInfo').textContent='✓ Profil kendaraan tersimpan: '+saved.brand_name+' '+
+      saved.model_name+' '+saved.variant+' '+saved.year+'. Belum menghubungkan diagram lain.';
+   await refreshVehicleDocuments();
+ }catch(error){$('vehicleInfo').textContent='Gagal menyimpan profil: '+error.message;
    window.ActionProgress?.reportError(error.message);
  }finally{button.disabled=false;}
 };
-$('bindSavedVehicle').onclick=async()=>{
- const id=$('savedVehicleProfile').value;if(!id){$('vehicleInfo').textContent='Pilih profil kendaraan tersimpan.';return;}
- const button=$('bindSavedVehicle');button.disabled=true;
- try{
-   S.vehicleBinding=await api('/api/diagram-vehicle-bind',{
-     method:'POST',headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({diagram_id:S.diagram.id,profile_id:id})});
-   await loadVehicleBinding();
- }catch(error){$('vehicleInfo').textContent='Gagal hubungkan: '+error.message;
-   window.ActionProgress?.reportError(error.message);
- }finally{button.disabled=false;}
-};
+$('bindSavedVehicle').onclick=()=>{$('vehicleInfo').textContent='Gunakan Pilih kendaraan → Hubungkan PDF/gambar yang cocok. Pengaitan otomatis ke diagram aktif dinonaktifkan.';};
 $('addCustomVehicleModel').onclick=async()=>{
  const button=$('addCustomVehicleModel');button.disabled=true;
  try{
@@ -1306,6 +1314,8 @@ async function refreshPdfLibrary(){
        ' • arsip: '+item.archive_status+' • hak: '+item.rights;
      row.append(a,meta);leads.append(row);
    }
+   S.localPdfDocuments=docs;
+   if(typeof renderVehiclePdfOptions==='function')renderVehiclePdfOptions();
    const lib=$('pdfDocumentList');lib.replaceChildren();
    if(!docs.length){
       const empty=document.createElement('p');empty.className='muted';
@@ -1330,3 +1340,234 @@ async function refreshPdfLibrary(){
  }
 }
 $('refreshPdfLibrary').onclick=refreshPdfLibrary;
+
+
+// v0.4.2 Vehicle-first routing. A select box is metadata, never a
+// service-manual compatibility proof. No fallback to unrelated diagrams.
+let lookupTicket=0,lookupDelay=null;
+function currentVehicleQuery(){
+ return {brand_id:$('vehicleBrand').value,model_id:$('vehicleModel').value,
+   year:$('vehicleYear').value,variant:$('vehicleVariant').value.trim(),
+   powertrain:$('vehiclePowertrain').value};
+}
+function sameVehicle(a,b){
+ return a && b && a.brand_id===b.brand_id && a.model_id===b.model_id &&
+   Number(a.year)===Number(b.year) &&
+   String(a.variant||'').trim().toLocaleLowerCase()===
+     String(b.variant||'').trim().toLocaleLowerCase() &&
+   a.powertrain===b.powertrain;
+}
+function selectedExactProfile(){
+ const q=currentVehicleQuery();
+ const id=$('savedVehicleProfile').value;
+ return (S.vehicleProfiles||[]).find(p=>p.id===id&&sameVehicle(p,q))||null;
+}
+function setVehicleViewerEmpty(message){
+ S.diagram=null;
+ $('stage').hidden=true;
+ $('viewerEmpty').hidden=false;
+ $('viewerEmpty').textContent=message;
+ $('diagramImg').removeAttribute('src');
+ $('overlay').replaceChildren();
+ $('status').textContent=message;
+ for(const id of ['buildUniversalScan','runElectricalDiagnosis','loadMvp',
+   'buildTerminalAccuracy','buildBranchTrace']){
+   if($(id))$(id).disabled=true;
+ }
+}
+function queueVehicleLookup(){
+ clearTimeout(lookupDelay);
+ // Erase the prior image immediately, even before the API response.
+ S.diagrams=[];S.legacyMode=false;$('diagram').replaceChildren();
+ setVehicleViewerEmpty('Mencari diagram untuk pilihan kendaraan yang baru...');
+ lookupDelay=setTimeout(()=>refreshVehicleDocuments(),300);
+}
+function renderUnassignedDiagramOptions(){
+ const select=$('unassignedDiagram');
+ if(!select)return;
+ select.replaceChildren();select.append($makeOption('','Pilih gambar PNG/JPEG yang diimpor'));
+ const matchingIds=new Set((S.diagrams||[]).map(d=>d.id));
+ for(const d of S.allDiagrams||[]){
+   if(d.id.startsWith('upload_')&&!matchingIds.has(d.id))
+     select.append($makeOption(d.id,d.title+' — '+d.vehicle));
+ }
+}
+function renderVehiclePdfOptions(){
+ const assigned=$('matchedVehiclePdf');
+ if(!assigned)return;
+ const previous=assigned.value;
+ assigned.replaceChildren();assigned.append($makeOption('','Pilih PDF yang sudah dikaitkan'));
+ for(const pdf of S.matchedPdfs||[])
+   assigned.append($makeOption(pdf.id,pdf.title+' — '+(VEHICLE_SYSTEM_LABELS[pdf.system]||pdf.system)));
+ if((S.matchedPdfs||[]).some(pdf=>pdf.id===previous))assigned.value=previous;
+ const available=$('pdfToAssign');const prior=available.value;
+ available.replaceChildren();available.append($makeOption('','Pilih PDF dari arsip lokal'));
+ for(const pdf of S.localPdfDocuments||[])
+   available.append($makeOption(pdf.id,pdf.title+' — '+pdf.vehicle));
+ if((S.localPdfDocuments||[]).some(pdf=>pdf.id===prior))available.value=prior;
+}
+let VEHICLE_SYSTEM_LABELS={};
+async function initVehicleFirst(){
+ VEHICLE_SYSTEM_LABELS=await api('/api/electrical-systems');
+ const type=$('pdfElectricalSystem');type.replaceChildren();
+ for(const [id,label] of Object.entries(VEHICLE_SYSTEM_LABELS))
+   type.append($makeOption(id,label));
+ $('savedVehicleProfile').onchange=()=>{
+   const p=(S.vehicleProfiles||[]).find(v=>v.id===$('savedVehicleProfile').value);
+   if(!p)return;
+   renderVehicleBrands(p.brand_id);
+   renderVehicleTypes(p.body_type);
+   renderVehicleNames(p.model_id);
+   $('vehicleVariant').value=p.variant||'';
+   $('vehicleYear').value=p.year;
+   $('vehiclePowertrain').value=p.powertrain||'unknown';
+   queueVehicleLookup();
+ };
+ $('searchVehicleDocuments').onclick=()=>refreshVehicleDocuments();
+ $('showLegacyExamples').onclick=async()=>{
+   clearTimeout(lookupDelay);lookupTicket++;S.legacyMode=true;
+   const examples=(S.allDiagrams||[]).filter(d=>
+     ['junction_block','abbreviations','bcm_wiring'].includes(d.id));
+   S.diagrams=examples;
+   const select=$('diagram');select.replaceChildren();
+   for(const d of examples)select.append($makeOption(d.id,'[SAMPEL LAMA] '+d.title));
+   $('documentSearchStatus').textContent='Mode SAMPEL: bukan hasil pencarian kendaraan. Verifikasi aplikasi sebelum diagnostik.';
+   $('diagramSearchResults').textContent='Contoh bawaan Suzuki SX4 tetap tersedia untuk pengujian fitur lama.';
+   if(examples.length)await change();
+ };
+ $('assignPdfToVehicle').onclick=attachSelectedPdf;
+ $('matchedVehiclePdf').onchange=loadSelectedPdfInfo;
+ $('openSelectedPdf').onclick=()=>{
+   const item=(S.matchedPdfs||[]).find(p=>p.id===$('matchedVehiclePdf').value);
+   if(!item){$('pdfWorkflowStatus').textContent='Pilih PDF yang sudah dikaitkan dahulu.';return;}
+   window.open('/pdf-library/'+encodeURIComponent(item.file_name),'_blank','noopener');
+ };
+ $('importPdfPage').onclick=renderSelectedPdfPage;
+ $('classifyDiagram').onclick=classifySelectedImage;
+ renderVehiclePdfOptions();
+ renderUnassignedDiagramOptions();
+}
+async function refreshVehicleDocuments(preferDiagram){
+ clearTimeout(lookupDelay);
+ const ticket=++lookupTicket;
+ const q=currentVehicleQuery();
+ S.legacyMode=false;
+ S.diagrams=[];
+ $('diagram').replaceChildren();
+ setVehicleViewerEmpty('Belum ada diagram sesuai pilihan kendaraan.');
+ $('pdfPageInfo').textContent='';
+ if(!q.brand_id||!q.model_id||!q.year){
+   $('documentSearchStatus').textContent='Pilih merk, model, dan tahun kendaraan untuk mencari diagram.';
+   S.matchedPdfs=[];renderVehiclePdfOptions();renderUnassignedDiagramOptions();
+   return;
+ }
+ $('documentSearchStatus').textContent='Mencari dokumen yang cocok secara tepat...';
+ try{
+   const params=new URLSearchParams(q);
+   const found=await api('/api/vehicle-documents?'+params.toString());
+   if(ticket!==lookupTicket)return;
+   S.matchedPdfs=found.pdfs||[];
+   S.diagrams=found.diagrams||[];
+   const select=$('diagram');select.replaceChildren();
+   for(const d of S.diagrams){
+     select.append($makeOption(d.id,d.title+' — '+(VEHICLE_SYSTEM_LABELS[d.system]||d.system)));
+   }
+   renderVehiclePdfOptions();renderUnassignedDiagramOptions();
+   const count=S.diagrams.length;
+   $('documentSearchStatus').textContent=count+' gambar wiring • '+
+       S.matchedPdfs.length+' PDF terhubung untuk kendaraan '+q.year+
+       '. Pencocokan metadata persis, kecocokan listrik masih perlu verifikasi.';
+   $('diagramSearchResults').textContent=count
+     ? 'Pilih diagram dari daftar. Tidak menampilkan diagram model/tahun/varian lain.'
+     : (S.matchedPdfs.length
+       ? 'Ada PDF terkait, tetapi halaman belum diekstrak. Pilih PDF dan nomor halaman di bawah.'
+       : 'Wiring diagram kendaraan ini belum tersedia. Impor PDF atau gambar yang tepat.');
+   if(count){
+     if(preferDiagram && S.diagrams.some(d=>d.id===preferDiagram))
+        select.value=preferDiagram;
+     await change();
+   }else{
+     setVehicleViewerEmpty('Belum tersedia diagram untuk pilihan kendaraan ini. Impor PDF yang cocok, hubungkan, lalu pilih halamannya.');
+   }
+ }catch(error){
+   if(ticket!==lookupTicket)return;
+   $('documentSearchStatus').textContent='Gagal mencari dokumen: '+error.message;
+   setVehicleViewerEmpty('Pencarian gagal. Periksa data kendaraan dan server.');
+ }
+}
+async function loadSelectedPdfInfo(){
+ const pdf_id=$('matchedVehiclePdf').value;
+ $('pdfPageInfo').textContent='';
+ if(!pdf_id)return;
+ try{
+   const result=await api('/api/pdf-page-info?pdf_id='+encodeURIComponent(pdf_id));
+   $('pdfPageNumber').max=result.page_count;
+   $('pdfPageNumber').value=Math.min(Number($('pdfPageNumber').value)||1,result.page_count);
+   const match=(S.matchedPdfs||[]).find(p=>p.id===pdf_id);
+   if(match)$('pdfElectricalSystem').value=match.system;
+   $('pdfPageInfo').textContent=result.page_count+' halaman. Buka PDF asli, cari halaman wiring yang tepat, lalu impor satu halaman.';
+ }catch(error){
+   $('pdfPageInfo').textContent='Tidak bisa membuka PDF: '+error.message;
+ }
+}
+async function attachSelectedPdf(){
+ const b=$('assignPdfToVehicle');b.disabled=true;
+ try{
+   const profile=selectedExactProfile();
+   if(!profile)throw Error('Simpan dan pilih profil yang sama persis dengan pilihan kendaraan saat ini.');
+   const pdf_id=$('pdfToAssign').value;
+   if(!pdf_id)throw Error('Pilih PDF dari arsip lokal.');
+   if(!$('confirmPdfApplicability').checked)
+     throw Error('Periksa kecocokan dokumen, lalu centang konfirmasi.');
+   await api('/api/pdf-vehicle-attach',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({profile_id:profile.id,pdf_id,
+       system:$('pdfElectricalSystem').value,confirmed_applicability:true})});
+   await refreshVehicleDocuments();
+   $('matchedVehiclePdf').value=pdf_id;
+   await loadSelectedPdfInfo();
+   $('pdfWorkflowStatus').textContent='✓ PDF ditautkan berdasarkan konfirmasi pengguna. Diagram kelistrikan belum diverifikasi.';
+ }catch(error){$('pdfWorkflowStatus').textContent='Gagal menautkan PDF: '+error.message;}
+ finally{b.disabled=false;}
+}
+async function renderSelectedPdfPage(){
+ const b=$('importPdfPage');b.disabled=true;
+ try{
+   const item=(S.matchedPdfs||[]).find(p=>p.id===$('matchedVehiclePdf').value);
+   if(!item)throw Error('Pilih PDF yang sudah dikaitkan dengan kendaraan ini.');
+   const profile=(S.vehicleProfiles||[]).find(p=>p.id===item.profile_id);
+   if(!profile||!sameVehicle(profile,currentVehicleQuery()))
+     throw Error('Metadata PDF tidak cocok dengan pilihan kendaraan.');
+   if(!$('confirmPdfApplicability').checked)
+     throw Error('Konfirmasi kesesuaian dokumen dahulu.');
+   const page=Number($('pdfPageNumber').value);
+   if(!Number.isInteger(page)||page<1)throw Error('Nomor halaman PDF tidak valid.');
+   $('pdfWorkflowStatus').textContent='Merender satu halaman PDF menjadi gambar diagram...';
+   const result=await api('/api/pdf-page-import',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({pdf_id:item.id,profile_id:item.profile_id,page_number:page,
+       system:$('pdfElectricalSystem').value,confirmed_applicability:true})});
+   S.allDiagrams=await api('/api/diagrams');
+   await refreshVehicleDocuments(result.id);
+   $('pdfWorkflowStatus').textContent='✓ Halaman '+page+' dibuka di viewer. OCR dan konektivitas listrik belum diverifikasi.';
+ }catch(error){$('pdfWorkflowStatus').textContent='Gagal impor halaman: '+error.message;}
+ finally{b.disabled=false;}
+}
+async function classifySelectedImage(){
+ const b=$('classifyDiagram');b.disabled=true;
+ try{
+   const profile=selectedExactProfile();
+   if(!profile)throw Error('Simpan dan pilih profil kendaraan sesuai data yang dipilih.');
+   const id=$('unassignedDiagram').value;
+   if(!id)throw Error('Pilih gambar PNG/JPEG yang diimpor dahulu.');
+   if(!$('confirmPdfApplicability').checked)
+     throw Error('Periksa kecocokan gambar dan centang konfirmasi.');
+   await api('/api/diagram-classify',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({diagram_id:id,profile_id:profile.id,
+       system:$('pdfElectricalSystem').value,confirmed_applicability:true})});
+   await refreshVehicleDocuments(id);
+   $('pdfWorkflowStatus').textContent='✓ Gambar dikaitkan ke kendaraan. Hubungan kelistrikan tetap belum terverifikasi.';
+ }catch(error){$('pdfWorkflowStatus').textContent='Gagal klasifikasi: '+error.message;}
+ finally{b.disabled=false;}
+}
