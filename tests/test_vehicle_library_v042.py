@@ -130,4 +130,28 @@ class VehicleFirstTests(unittest.TestCase):
                 import_page(self.db,self.store,self.assets,self.doc["id"],
                             self.profile["id"],1,"starting",True)
 
+    def test_real_pymupdf_page_render_if_available(self):
+        try:import fitz
+        except ImportError:self.skipTest("PyMuPDF not installed")
+        from PIL import Image
+        real=self.root/"generated_for_integration.pdf"
+        with fitz.open() as pdf:
+            page=pdf.new_page(width=612,height=792)
+            page.insert_text((52,72),"FUSE 15A -> RELAY -> LOAD (sample fixture)")
+            pdf.save(str(real))
+        doc=add_local_pdf(self.db,self.store,real,"Generated test circuit",
+             "Suzuki Swift 2007","synthetic test created by AutoWiring")
+        attach_pdf(self.db,doc["id"],self.profile["id"],"starting",True)
+        info=pdf_info(self.db,self.store,doc["id"])
+        self.assertEqual(info["page_count"],1)
+        rendered=import_page(self.db,self.store,self.assets,doc["id"],
+                             self.profile["id"],1,"starting",True)
+        with Image.open(self.assets/rendered["image_file"]) as img:
+            self.assertEqual(img.format,"PNG")
+            self.assertGreater(img.width,800)
+            self.assertGreater(img.height,900)
+        again=import_page(self.db,self.store,self.assets,doc["id"],
+                          self.profile["id"],1,"starting",True)
+        self.assertTrue(again["cache_hit"])
+
 if __name__=="__main__":unittest.main()
