@@ -7,7 +7,13 @@ function draw(){const overlay=$('overlay');overlay.replaceChildren();overlay.set
 function inspect(type,obj){$('inspector').innerHTML=`<b>${esc(obj.label||obj.connector_label||obj.path_label)}</b><p>Jenis: ${esc(obj.kind||type)}</p><p>Status: ${esc(obj.verification)}</p><p>${esc(obj.notes||'Tanpa catatan')}</p><p class="muted">ID: ${esc(obj.id)}</p>`}
 function list(id,items,type){const el=$(id);el.replaceChildren();for(const x of items){const row=document.createElement('div');row.className='item';const b=document.createElement('button');b.textContent=x.label;b.onclick=()=>inspect(type,x);const del=document.createElement('button');del.className='delete';del.textContent='×';del.title='Hapus';del.onclick=async()=>{if(!confirm(`Hapus ${x.label}?`))return;await api(`/api/${type}/${x.id}`,{method:'DELETE'});await refresh()};row.append(b,del);el.append(row)}}
 async function refresh(){S.graph=await api(`/api/graph?diagram=${S.diagram.id}`);S.segmentation=await api(`/api/segmentation?diagram=${S.diagram.id}`);$('segmentInfo').textContent=S.segmentation.run?`${S.segmentation.run.candidate_wire_segments}/${S.segmentation.run.raw_segments} candidate segments • ${S.segmentation.run.excluded_structural_segments} excluded • ${S.segmentation.run.remaining_ambiguous_crossings} crossings • 0 verified connections`:'Segmentation not built';S.associations=await api(`/api/associations?diagram=${S.diagram.id}`);S.terminalCandidates=await api(`/api/terminal-candidates?diagram=${S.diagram.id}`);renderTerminalCandidates();S.circleCandidates=await api(`/api/circle-candidates?diagram=${S.diagram.id}`);renderCircleCandidates();S.evidence=await api(`/api/evidence?diagram=${S.diagram.id}`);renderEvidence();S.independent=await api(`/api/independent-ocr?diagram=${S.diagram.id}`);renderIndependent();S.pathMatches=await api(`/api/path-matches?diagram=${S.diagram.id}`);renderPathMatches();S.fuseAudit=await api(`/api/fuse-audit?diagram=${S.diagram.id}`);renderFuseAudit();S.localOCR=await api(`/api/local-ocr?diagram=${S.diagram.id}`);renderLocalOCR();S.diagnostics=await api(`/api/match-diagnostics?diagram=${S.diagram.id}`);renderDiagnostics();S.continuity=await api(`/api/continuity-audit?diagram=${S.diagram.id}`);renderContinuity();S.targeted=await api(`/api/targeted-ocr?diagram=${S.diagram.id}`);renderTargeted();S.gapVisual=await api(`/api/gap-visual?diagram=${S.diagram.id}`);renderGapVisual();S.components=await api(`/api/components?diagram=${S.diagram.id}`);renderComponents();S.trace=await api(`/api/trace?diagram=${S.diagram.id}`);renderTrace();S.enhanced=await api(`/api/enhanced-trace?diagram=${S.diagram.id}`);renderEnhanced();S.corrected=await api(`/api/corrected-trace?diagram=${S.diagram.id}`);renderCorrected();S.branchesV0320=await api(`/api/branch-trace?diagram=${S.diagram.id}`);renderBranchTrace();S.terminalAccuracy=await api(`/api/terminal-accuracy?diagram=${S.diagram.id}`);renderTerminalAccuracy();S.selectedAssociation=null;renderAssociations();S.selectedEdge=null;renderGraph();S.auto=await api(`/api/auto-candidates?diagram=${S.diagram.id}`);const kinds={};for(const a of S.auto)kinds[a.kind]=(kinds[a.kind]||0)+1;$('autoInfo').textContent=`${S.auto.length} kandidat • ${Object.entries(kinds).map(([k,v])=>k+': '+v).join(', ')||'Belum ada'}. Tidak ada konektivitas otomatis terverifikasi.`;$('autoList').replaceChildren();for(const a of S.auto.filter(a=>a.kind==='ocr_connector'||a.kind==='ocr_fuse_label').slice(0,25)){const b=document.createElement('button');b.textContent=`${a.kind}: ${a.label} (${Math.round(a.confidence*100)}%)`;b.onclick=()=>inspect('machine candidate',{...a,notes:'Belum diverifikasi oleh teknisi'});$('autoList').append(b)}S.annotations=await api(`/api/annotations?diagram=${S.diagram.id}`);S.paths=await api(`/api/paths?diagram=${S.diagram.id}`);S.terminals=await api(`/api/terminals?diagram=${S.diagram.id}`);S.links=await api(`/api/circuit-links?diagram=${S.diagram.id}`);list('annotations',S.annotations,'annotations');list('paths',S.paths,'paths');renderMappings();draw();$('status').textContent=`${S.annotations.length} anotasi • ${S.paths.length} jalur (manual)`}
-async function change(){S.mvp={summary:null,circuits:[],review_queue:[]};S.selectedMvpFuse=null;renderMvp();S.diagram=S.diagrams.find(d=>d.id===$('diagram').value);
+async function change(){
+ if(!S.diagrams.length || !S.diagrams.some(d=>d.id===$('diagram').value)){
+   setVehicleViewerEmpty('Belum ada diagram terpilih. Pilih kendaraan yang memiliki dokumen atau impor PDF.');
+   return;
+ }
+ $('stage').hidden=false;$('viewerEmpty').hidden=true;
+ S.mvp={summary:null,circuits:[],review_queue:[]};S.selectedMvpFuse=null;renderMvp();S.diagram=S.diagrams.find(d=>d.id===$('diagram').value);
 const exampleOnly=S.diagram.id==='junction_block';
 $('loadMvp').disabled=!exampleOnly;
 $('buildTerminalAccuracy').disabled=!exampleOnly;
@@ -22,7 +28,15 @@ $('viewport').onpointerdown=e=>{if(e.button!==0)return;if(S.mode==='pan'){S.drag
 $('overlay').addEventListener('click',e=>{if(S.mode==='pan'||e.target!==$('overlay'))return;const p=point(e);if(S.mode==='annotation'){S.point=p;$('editor').showModal()}else{S.pending.push(p);draw()}});
 $('close').onclick=()=>$('editor').close();$('editForm').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);try{await api('/api/annotations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({diagram_id:S.diagram.id,kind:f.get('kind'),label:f.get('label'),notes:f.get('notes'),x:S.point[0],y:S.point[1],w:.035,h:.025})});$('editor').close();e.target.reset();await refresh()}catch(err){alert(err.message)}};
 $('finish').onclick=async()=>{if(S.pending.length<2)return alert('Minimal dua titik');const label=prompt('Nama jalur (manual):');if(!label)return;try{await api('/api/paths',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({diagram_id:S.diagram.id,label,points:S.pending})});S.pending=[];await refresh()}catch(err){alert(err.message)}};$('cancel').onclick=()=>{S.pending=[];draw()};
-(async()=>{await refreshPdfLibrary();await initVehicleCatalog();await initDiagnosisOptions();S.diagrams=await api('/api/diagrams');for(const d of S.diagrams){const o=document.createElement('option');o.value=d.id;o.textContent=d.title;$('diagram').append(o)}$('diagram').value='junction_block';await change()})().catch(e=>{$('status').textContent=e.message});
+(async()=>{
+  await refreshPdfLibrary();
+  await initVehicleCatalog();
+  await initDiagnosisOptions();
+  S.allDiagrams=await api('/api/diagrams');
+  S.diagrams=[];
+  await initVehicleFirst();
+  setVehicleViewerEmpty('Pilih merk, model, tahun, varian dan penggerak untuk mencari wiring diagram.');
+})().catch(e=>{$('status').textContent=e.message;setVehicleViewerEmpty(e.message)});
 
 function options(el,items,fmt){el.replaceChildren();for(const item of items){const o=document.createElement('option');o.value=item.id;o.textContent=fmt(item);el.append(o)}}
 function mappingRow(container,title,detail,type,obj){const row=document.createElement('div');row.className='item';const b=document.createElement('button');b.textContent=title;b.title=detail;b.onclick=()=>{inspect(type,{...obj,label:title,notes:detail});if(type==='circuit-links'){const p=S.paths.find(x=>x.id===obj.path_id);if(p){$('search').value='';draw();const el=[...$('overlay').querySelectorAll('polyline')][S.paths.indexOf(p)];if(el){el.classList.add('selected-wire');setTimeout(()=>el.classList.remove('selected-wire'),3500)}}}};const del=document.createElement('button');del.className='delete';del.textContent='×';del.onclick=async()=>{if(!confirm('Hapus mapping ini?'))return;try{await api(`/api/${type}/${obj.id}`,{method:'DELETE'});await refresh()}catch(e){alert(e.message)}};row.append(b,del);container.append(row)}
@@ -1003,16 +1017,20 @@ $('uploadDiagramFile').onchange=async(event)=>{
      body:JSON.stringify({title:title.trim(),vehicle:vehicle.trim(),
        image_base64:dataURL})
    });
-   S.diagrams=await api('/api/diagrams');
-   const select=$('diagram');select.replaceChildren();
-   for(const d of S.diagrams){
-     const option=document.createElement('option');option.value=d.id;
-     option.textContent=d.title;select.append(option);
+   S.allDiagrams=await api('/api/diagrams');
+   const selected=selectedExactProfile();
+   if(selected && $('confirmPdfApplicability').checked){
+     await api('/api/diagram-classify',{
+       method:'POST',headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({diagram_id:result.id,profile_id:selected.id,
+         system:$('pdfElectricalSystem').value,confirmed_applicability:true})
+     });
+     await refreshVehicleDocuments(result.id);
+     msg.textContent='Gambar '+result.title+' diimpor dan dikaitkan ke kendaraan terpilih. Kecocokan teknis belum diverifikasi.';
+   }else{
+     await refreshVehicleDocuments();
+     msg.textContent='Gambar '+result.title+' diimpor tetapi BELUM dikaitkan. Simpan profil kendaraan, centang konfirmasi, lalu gunakan "Hubungkan gambar upload".';
    }
-   select.value=result.id;
-   await change();
-   msg.textContent='Imported: '+result.title+
-     ' • manual visual mapping only • no old OCR/graph steps rerun.';
  }catch(error){
    msg.textContent='Import failed: '+error.message;
    window.ActionProgress?.reportError(error.message);
@@ -1076,8 +1094,12 @@ async function initVehicleCatalog(preferredBrand,preferredModel){
  $('vehicleInfo').textContent=catalog.brands.length+' merk / '+
     catalog.models.length+' model awal. Varian & tahun dipilih manual; katalog ini tidak memverifikasi wiring kendaraan.';
 }
-$('vehicleBrand').onchange=()=>renderVehicleTypes();
-$('vehicleBodyType').onchange=()=>renderVehicleNames();
+$('vehicleBrand').onchange=()=>{renderVehicleTypes();queueVehicleLookup();};
+$('vehicleBodyType').onchange=()=>{renderVehicleNames();queueVehicleLookup();};
+$('vehicleModel').onchange=queueVehicleLookup;
+$('vehicleYear').onchange=queueVehicleLookup;
+$('vehicleVariant').oninput=queueVehicleLookup;
+$('vehiclePowertrain').onchange=queueVehicleLookup;
 async function loadVehicleBinding(){
  if(!S.diagram)return;
  S.vehicleBinding=await api('/api/vehicle-binding?diagram='+
@@ -1101,35 +1123,21 @@ async function loadVehicleBinding(){
 $('saveVehicle').onclick=async()=>{
  const button=$('saveVehicle');button.disabled=true;
  try{
-   const body={brand_id:$('vehicleBrand').value,model_id:$('vehicleModel').value,
-     year:$('vehicleYear').value,variant:$('vehicleVariant').value,
-     powertrain:$('vehiclePowertrain').value};
+   const body=currentVehicleQuery();
+   if(!body.brand_id||!body.model_id||!body.year)throw new Error('Pilih merk, model dan tahun dulu.');
    const saved=await api('/api/vehicle-profile',{
      method:'POST',headers:{'Content-Type':'application/json'},
      body:JSON.stringify(body)});
-   const attached=await api('/api/diagram-vehicle-bind',{
-     method:'POST',headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({diagram_id:S.diagram.id,profile_id:saved.id})});
    S.vehicleProfiles=await api('/api/vehicle-profiles');
-   S.vehicleBinding=attached;refreshSavedVehicles(saved.id);
-   $('vehicleInfo').textContent='✓ '+saved.brand_name+' '+saved.model_name+
-      ' '+saved.variant+' ('+saved.year+') terhubung. Kompatibilitas wiring belum tervalidasi.';
- }catch(error){$('vehicleInfo').textContent='Gagal simpan: '+error.message;
+   refreshSavedVehicles(saved.id);
+   $('vehicleInfo').textContent='✓ Profil kendaraan tersimpan: '+saved.brand_name+' '+
+      saved.model_name+' '+saved.variant+' '+saved.year+'. Belum menghubungkan diagram lain.';
+   await refreshVehicleDocuments();
+ }catch(error){$('vehicleInfo').textContent='Gagal menyimpan profil: '+error.message;
    window.ActionProgress?.reportError(error.message);
  }finally{button.disabled=false;}
 };
-$('bindSavedVehicle').onclick=async()=>{
- const id=$('savedVehicleProfile').value;if(!id){$('vehicleInfo').textContent='Pilih profil kendaraan tersimpan.';return;}
- const button=$('bindSavedVehicle');button.disabled=true;
- try{
-   S.vehicleBinding=await api('/api/diagram-vehicle-bind',{
-     method:'POST',headers:{'Content-Type':'application/json'},
-     body:JSON.stringify({diagram_id:S.diagram.id,profile_id:id})});
-   await loadVehicleBinding();
- }catch(error){$('vehicleInfo').textContent='Gagal hubungkan: '+error.message;
-   window.ActionProgress?.reportError(error.message);
- }finally{button.disabled=false;}
-};
+$('bindSavedVehicle').onclick=()=>{$('vehicleInfo').textContent='Gunakan Pilih kendaraan → Hubungkan PDF/gambar yang cocok. Pengaitan otomatis ke diagram aktif dinonaktifkan.';};
 $('addCustomVehicleModel').onclick=async()=>{
  const button=$('addCustomVehicleModel');button.disabled=true;
  try{
@@ -1306,6 +1314,8 @@ async function refreshPdfLibrary(){
        ' • arsip: '+item.archive_status+' • hak: '+item.rights;
      row.append(a,meta);leads.append(row);
    }
+   S.localPdfDocuments=docs;
+   if(typeof renderVehiclePdfOptions==='function')renderVehiclePdfOptions();
    const lib=$('pdfDocumentList');lib.replaceChildren();
    if(!docs.length){
       const empty=document.createElement('p');empty.className='muted';
@@ -1330,3 +1340,234 @@ async function refreshPdfLibrary(){
  }
 }
 $('refreshPdfLibrary').onclick=refreshPdfLibrary;
+
+
+// v0.4.2 Vehicle-first routing. A select box is metadata, never a
+// service-manual compatibility proof. No fallback to unrelated diagrams.
+let lookupTicket=0,lookupDelay=null;
+function currentVehicleQuery(){
+ return {brand_id:$('vehicleBrand').value,model_id:$('vehicleModel').value,
+   year:$('vehicleYear').value,variant:$('vehicleVariant').value.trim(),
+   powertrain:$('vehiclePowertrain').value};
+}
+function sameVehicle(a,b){
+ return a && b && a.brand_id===b.brand_id && a.model_id===b.model_id &&
+   Number(a.year)===Number(b.year) &&
+   String(a.variant||'').trim().toLocaleLowerCase()===
+     String(b.variant||'').trim().toLocaleLowerCase() &&
+   a.powertrain===b.powertrain;
+}
+function selectedExactProfile(){
+ const q=currentVehicleQuery();
+ const id=$('savedVehicleProfile').value;
+ return (S.vehicleProfiles||[]).find(p=>p.id===id&&sameVehicle(p,q))||null;
+}
+function setVehicleViewerEmpty(message){
+ S.diagram=null;
+ $('stage').hidden=true;
+ $('viewerEmpty').hidden=false;
+ $('viewerEmpty').textContent=message;
+ $('diagramImg').removeAttribute('src');
+ $('overlay').replaceChildren();
+ $('status').textContent=message;
+ for(const id of ['buildUniversalScan','runElectricalDiagnosis','loadMvp',
+   'buildTerminalAccuracy','buildBranchTrace']){
+   if($(id))$(id).disabled=true;
+ }
+}
+function queueVehicleLookup(){
+ clearTimeout(lookupDelay);
+ // Erase the prior image immediately, even before the API response.
+ S.diagrams=[];S.legacyMode=false;$('diagram').replaceChildren();
+ setVehicleViewerEmpty('Mencari diagram untuk pilihan kendaraan yang baru...');
+ lookupDelay=setTimeout(()=>refreshVehicleDocuments(),300);
+}
+function renderUnassignedDiagramOptions(){
+ const select=$('unassignedDiagram');
+ if(!select)return;
+ select.replaceChildren();select.append($makeOption('','Pilih gambar PNG/JPEG yang diimpor'));
+ const matchingIds=new Set((S.diagrams||[]).map(d=>d.id));
+ for(const d of S.allDiagrams||[]){
+   if(d.id.startsWith('upload_')&&!matchingIds.has(d.id))
+     select.append($makeOption(d.id,d.title+' — '+d.vehicle));
+ }
+}
+function renderVehiclePdfOptions(){
+ const assigned=$('matchedVehiclePdf');
+ if(!assigned)return;
+ const previous=assigned.value;
+ assigned.replaceChildren();assigned.append($makeOption('','Pilih PDF yang sudah dikaitkan'));
+ for(const pdf of S.matchedPdfs||[])
+   assigned.append($makeOption(pdf.id,pdf.title+' — '+(VEHICLE_SYSTEM_LABELS[pdf.system]||pdf.system)));
+ if((S.matchedPdfs||[]).some(pdf=>pdf.id===previous))assigned.value=previous;
+ const available=$('pdfToAssign');const prior=available.value;
+ available.replaceChildren();available.append($makeOption('','Pilih PDF dari arsip lokal'));
+ for(const pdf of S.localPdfDocuments||[])
+   available.append($makeOption(pdf.id,pdf.title+' — '+pdf.vehicle));
+ if((S.localPdfDocuments||[]).some(pdf=>pdf.id===prior))available.value=prior;
+}
+let VEHICLE_SYSTEM_LABELS={};
+async function initVehicleFirst(){
+ VEHICLE_SYSTEM_LABELS=await api('/api/electrical-systems');
+ const type=$('pdfElectricalSystem');type.replaceChildren();
+ for(const [id,label] of Object.entries(VEHICLE_SYSTEM_LABELS))
+   type.append($makeOption(id,label));
+ $('savedVehicleProfile').onchange=()=>{
+   const p=(S.vehicleProfiles||[]).find(v=>v.id===$('savedVehicleProfile').value);
+   if(!p)return;
+   renderVehicleBrands(p.brand_id);
+   renderVehicleTypes(p.body_type);
+   renderVehicleNames(p.model_id);
+   $('vehicleVariant').value=p.variant||'';
+   $('vehicleYear').value=p.year;
+   $('vehiclePowertrain').value=p.powertrain||'unknown';
+   queueVehicleLookup();
+ };
+ $('searchVehicleDocuments').onclick=()=>refreshVehicleDocuments();
+ $('showLegacyExamples').onclick=async()=>{
+   clearTimeout(lookupDelay);lookupTicket++;S.legacyMode=true;
+   const examples=(S.allDiagrams||[]).filter(d=>
+     ['junction_block','abbreviations','bcm_wiring'].includes(d.id));
+   S.diagrams=examples;
+   const select=$('diagram');select.replaceChildren();
+   for(const d of examples)select.append($makeOption(d.id,'[SAMPEL LAMA] '+d.title));
+   $('documentSearchStatus').textContent='Mode SAMPEL: bukan hasil pencarian kendaraan. Verifikasi aplikasi sebelum diagnostik.';
+   $('diagramSearchResults').textContent='Contoh bawaan Suzuki SX4 tetap tersedia untuk pengujian fitur lama.';
+   if(examples.length)await change();
+ };
+ $('assignPdfToVehicle').onclick=attachSelectedPdf;
+ $('matchedVehiclePdf').onchange=loadSelectedPdfInfo;
+ $('openSelectedPdf').onclick=()=>{
+   const item=(S.matchedPdfs||[]).find(p=>p.id===$('matchedVehiclePdf').value);
+   if(!item){$('pdfWorkflowStatus').textContent='Pilih PDF yang sudah dikaitkan dahulu.';return;}
+   window.open('/pdf-library/'+encodeURIComponent(item.file_name),'_blank','noopener');
+ };
+ $('importPdfPage').onclick=renderSelectedPdfPage;
+ $('classifyDiagram').onclick=classifySelectedImage;
+ renderVehiclePdfOptions();
+ renderUnassignedDiagramOptions();
+}
+async function refreshVehicleDocuments(preferDiagram){
+ clearTimeout(lookupDelay);
+ const ticket=++lookupTicket;
+ const q=currentVehicleQuery();
+ S.legacyMode=false;
+ S.diagrams=[];
+ $('diagram').replaceChildren();
+ setVehicleViewerEmpty('Belum ada diagram sesuai pilihan kendaraan.');
+ $('pdfPageInfo').textContent='';
+ if(!q.brand_id||!q.model_id||!q.year){
+   $('documentSearchStatus').textContent='Pilih merk, model, dan tahun kendaraan untuk mencari diagram.';
+   S.matchedPdfs=[];renderVehiclePdfOptions();renderUnassignedDiagramOptions();
+   return;
+ }
+ $('documentSearchStatus').textContent='Mencari dokumen yang cocok secara tepat...';
+ try{
+   const params=new URLSearchParams(q);
+   const found=await api('/api/vehicle-documents?'+params.toString());
+   if(ticket!==lookupTicket)return;
+   S.matchedPdfs=found.pdfs||[];
+   S.diagrams=found.diagrams||[];
+   const select=$('diagram');select.replaceChildren();
+   for(const d of S.diagrams){
+     select.append($makeOption(d.id,d.title+' — '+(VEHICLE_SYSTEM_LABELS[d.system]||d.system)));
+   }
+   renderVehiclePdfOptions();renderUnassignedDiagramOptions();
+   const count=S.diagrams.length;
+   $('documentSearchStatus').textContent=count+' gambar wiring • '+
+       S.matchedPdfs.length+' PDF terhubung untuk kendaraan '+q.year+
+       '. Pencocokan metadata persis, kecocokan listrik masih perlu verifikasi.';
+   $('diagramSearchResults').textContent=count
+     ? 'Pilih diagram dari daftar. Tidak menampilkan diagram model/tahun/varian lain.'
+     : (S.matchedPdfs.length
+       ? 'Ada PDF terkait, tetapi halaman belum diekstrak. Pilih PDF dan nomor halaman di bawah.'
+       : 'Wiring diagram kendaraan ini belum tersedia. Impor PDF atau gambar yang tepat.');
+   if(count){
+     if(preferDiagram && S.diagrams.some(d=>d.id===preferDiagram))
+        select.value=preferDiagram;
+     await change();
+   }else{
+     setVehicleViewerEmpty('Belum tersedia diagram untuk pilihan kendaraan ini. Impor PDF yang cocok, hubungkan, lalu pilih halamannya.');
+   }
+ }catch(error){
+   if(ticket!==lookupTicket)return;
+   $('documentSearchStatus').textContent='Gagal mencari dokumen: '+error.message;
+   setVehicleViewerEmpty('Pencarian gagal. Periksa data kendaraan dan server.');
+ }
+}
+async function loadSelectedPdfInfo(){
+ const pdf_id=$('matchedVehiclePdf').value;
+ $('pdfPageInfo').textContent='';
+ if(!pdf_id)return;
+ try{
+   const result=await api('/api/pdf-page-info?pdf_id='+encodeURIComponent(pdf_id));
+   $('pdfPageNumber').max=result.page_count;
+   $('pdfPageNumber').value=Math.min(Number($('pdfPageNumber').value)||1,result.page_count);
+   const match=(S.matchedPdfs||[]).find(p=>p.id===pdf_id);
+   if(match)$('pdfElectricalSystem').value=match.system;
+   $('pdfPageInfo').textContent=result.page_count+' halaman. Buka PDF asli, cari halaman wiring yang tepat, lalu impor satu halaman.';
+ }catch(error){
+   $('pdfPageInfo').textContent='Tidak bisa membuka PDF: '+error.message;
+ }
+}
+async function attachSelectedPdf(){
+ const b=$('assignPdfToVehicle');b.disabled=true;
+ try{
+   const profile=selectedExactProfile();
+   if(!profile)throw Error('Simpan dan pilih profil yang sama persis dengan pilihan kendaraan saat ini.');
+   const pdf_id=$('pdfToAssign').value;
+   if(!pdf_id)throw Error('Pilih PDF dari arsip lokal.');
+   if(!$('confirmPdfApplicability').checked)
+     throw Error('Periksa kecocokan dokumen, lalu centang konfirmasi.');
+   await api('/api/pdf-vehicle-attach',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({profile_id:profile.id,pdf_id,
+       system:$('pdfElectricalSystem').value,confirmed_applicability:true})});
+   await refreshVehicleDocuments();
+   $('matchedVehiclePdf').value=pdf_id;
+   await loadSelectedPdfInfo();
+   $('pdfWorkflowStatus').textContent='✓ PDF ditautkan berdasarkan konfirmasi pengguna. Diagram kelistrikan belum diverifikasi.';
+ }catch(error){$('pdfWorkflowStatus').textContent='Gagal menautkan PDF: '+error.message;}
+ finally{b.disabled=false;}
+}
+async function renderSelectedPdfPage(){
+ const b=$('importPdfPage');b.disabled=true;
+ try{
+   const item=(S.matchedPdfs||[]).find(p=>p.id===$('matchedVehiclePdf').value);
+   if(!item)throw Error('Pilih PDF yang sudah dikaitkan dengan kendaraan ini.');
+   const profile=(S.vehicleProfiles||[]).find(p=>p.id===item.profile_id);
+   if(!profile||!sameVehicle(profile,currentVehicleQuery()))
+     throw Error('Metadata PDF tidak cocok dengan pilihan kendaraan.');
+   if(!$('confirmPdfApplicability').checked)
+     throw Error('Konfirmasi kesesuaian dokumen dahulu.');
+   const page=Number($('pdfPageNumber').value);
+   if(!Number.isInteger(page)||page<1)throw Error('Nomor halaman PDF tidak valid.');
+   $('pdfWorkflowStatus').textContent='Merender satu halaman PDF menjadi gambar diagram...';
+   const result=await api('/api/pdf-page-import',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({pdf_id:item.id,profile_id:item.profile_id,page_number:page,
+       system:$('pdfElectricalSystem').value,confirmed_applicability:true})});
+   S.allDiagrams=await api('/api/diagrams');
+   await refreshVehicleDocuments(result.id);
+   $('pdfWorkflowStatus').textContent='✓ Halaman '+page+' dibuka di viewer. OCR dan konektivitas listrik belum diverifikasi.';
+ }catch(error){$('pdfWorkflowStatus').textContent='Gagal impor halaman: '+error.message;}
+ finally{b.disabled=false;}
+}
+async function classifySelectedImage(){
+ const b=$('classifyDiagram');b.disabled=true;
+ try{
+   const profile=selectedExactProfile();
+   if(!profile)throw Error('Simpan dan pilih profil kendaraan sesuai data yang dipilih.');
+   const id=$('unassignedDiagram').value;
+   if(!id)throw Error('Pilih gambar PNG/JPEG yang diimpor dahulu.');
+   if(!$('confirmPdfApplicability').checked)
+     throw Error('Periksa kecocokan gambar dan centang konfirmasi.');
+   await api('/api/diagram-classify',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({diagram_id:id,profile_id:profile.id,
+       system:$('pdfElectricalSystem').value,confirmed_applicability:true})});
+   await refreshVehicleDocuments(id);
+   $('pdfWorkflowStatus').textContent='✓ Gambar dikaitkan ke kendaraan. Hubungan kelistrikan tetap belum terverifikasi.';
+ }catch(error){$('pdfWorkflowStatus').textContent='Gagal klasifikasi: '+error.message;}
+ finally{b.disabled=false;}
+}
