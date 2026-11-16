@@ -1,0 +1,44 @@
+name: AutoWiring v0.4.2 Vehicle-First PDF Viewer
+on:
+  push:
+    branches: [feature/v0.4.2-vehicle-first-pdf-viewer]
+  pull_request:
+    branches: [feature/v0.4.1-source-library]
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install "Pillow>=10,<13" "PyMuPDF>=1.24,<2"
+      - run: python -m compileall -q viewer.py pdf_sources.py autowiring tests
+      - run: node --check web/app.js
+      - run: python -m unittest discover -s tests -p 'test_vehicle_library_v042.py' -v
+      - run: python -m unittest discover -s tests -p 'test_vehicle_first_http.py' -v
+      - run: python -m unittest discover -s tests -p 'test_pdf_library.py' -v
+      - run: python -m unittest discover -s tests -p 'test_vehicle_diagnosis.py' -v
+      - run: python -m unittest discover -s tests -p 'test_vehicle_api_http.py' -v
+      - run: python -m unittest discover -s tests -p 'test_diagram_upload.py' -v
+      - name: Verify vehicle-first flow has blank state and explicit PDF page controls
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          ui=Path('web/index.html').read_text()
+          js=Path('web/app.js').read_text()
+          server=Path('viewer.py').read_text()
+          for item in ('viewerEmpty','matchedVehiclePdf','pdfToAssign','pdfPageNumber',
+                       'importPdfPage','confirmPdfApplicability','unassignedDiagram',
+                       'searchVehicleDocuments','showLegacyExamples'):
+              assert f'id="{item}"' in ui,item
+          for item in ('refreshVehicleDocuments','setVehicleViewerEmpty',
+                       'attachSelectedPdf','renderSelectedPdfPage'):
+              assert item in js,item
+          for item in ('/api/vehicle-documents','/api/pdf-vehicle-attach',
+                       '/api/pdf-page-import','/api/pdf-page-info',
+                       '/api/diagram-classify'):
+              assert item in server,item
+          print('PASS: vehicle-first and PDF page integration wiring')
+          PY
