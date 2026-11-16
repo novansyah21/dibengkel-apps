@@ -373,7 +373,7 @@ def run(port,dbpath):
     else:return self.send(404,{'error':'not found'})
     with sqlite3.connect(dbpath) as db:db.execute(sql,row);db.commit()
     return self.send(201,{'id':row[0]})
-   except (ValueError,TypeError,KeyError,sqlite3.Error,json.JSONDecodeError) as e:return self.send(400,{'error':str(e)})
+   except (ValueError,RuntimeError,TypeError,KeyError,sqlite3.Error,json.JSONDecodeError,OSError) as e:return self.send(400,{'error':str(e)})
   def do_DELETE(self):
    p=urlparse(self.path).path.split('/')
    if len(p)!=4 or p[1]!='api' or p[2] not in ('annotations','paths','terminals','circuit-links') or not p[3].isalnum():return self.send(404,{'error':'not found'})
