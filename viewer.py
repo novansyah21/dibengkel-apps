@@ -1,4 +1,4 @@
-"""AutoWiring v0.4.1 multi-vehicle diagnostic beta with local PDF source library."""
+"""AutoWiring v0.4.2 vehicle-first diagram matching with local PDF page rendering."""
 import argparse,json,mimetypes,sqlite3,shutil,uuid,re
 from pathlib import Path
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
@@ -29,6 +29,10 @@ from autowiring.branch_tracing import SCHEMA as BRANCH_SCHEMA,build as build_bra
 from autowiring.terminal_accuracy import SCHEMA as ACCURACY_SCHEMA,build as build_terminal_accuracy,latest as latest_terminal_accuracy,review as review_terminal_accuracy
 from autowiring.mvp_review import SCHEMA as MVP_SCHEMA,assemble as mvp_report,snapshot as mvp_snapshot,snapshots as mvp_snapshots
 from autowiring.diagram_upload import upload as upload_diagram
+from autowiring.vehicle_library import (SCHEMA as VEHICLE_LIBRARY_SCHEMA, SYSTEMS as VEHICLE_SYSTEMS,
+ search as matching_vehicle_documents,attach_pdf as attach_vehicle_pdf,
+ attach_diagram as classify_vehicle_diagram,pdf_info as vehicle_pdf_info,
+ import_page as import_vehicle_pdf_page)
 from autowiring.source_candidates import candidates as pdf_candidates
 from autowiring.pdf_library import (SCHEMA as PDF_SCHEMA,init as init_pdf_library,sources as pdf_sources,documents as pdf_documents)
 from autowiring.vehicle_catalog import (SCHEMA as VEHICLE_SCHEMA,seed as seed_vehicles,catalog as vehicle_catalog,
@@ -50,7 +54,7 @@ CREATE TABLE IF NOT EXISTS viewer_circuit_links(id TEXT PRIMARY KEY,diagram_id T
 SEEDS=[('junction_block','Junction Block — fuse and terminal map','c9954639ad0fb133cedb.png',1136,1598),('abbreviations','Abbreviation reference','17ba65f18296c7320c58.png',640,316),('bcm_wiring','BCM internal wiring / harness','a6c3c83161c162401c88.png',1248,1512)]
 
 def setup(db):
- db.executescript(SCHEMA + AUTO_SCHEMA + GRAPH_SCHEMA + SEG_SCHEMA + ASSOC_SCHEMA + TERMINAL_SCHEMA + CIRCLE_SCHEMA + EVIDENCE_SCHEMA + INDEPENDENT_SCHEMA + PATHMATCH_SCHEMA + FUSE_AUDIT_SCHEMA + LOCAL_OCR_SCHEMA + DIAG_SCHEMA + CONT_SCHEMA + TARGET_SCHEMA + VISUAL_SCHEMA + COMPONENT_SCHEMA + TRACE_SCHEMA + ENHANCED_SCHEMA + CORRECTED_SCHEMA + BRANCH_SCHEMA + ACCURACY_SCHEMA + MVP_SCHEMA + VEHICLE_SCHEMA + DIAGNOSE_SCHEMA + UNIVERSAL_SCHEMA + PDF_SCHEMA)
+ db.executescript(SCHEMA + AUTO_SCHEMA + GRAPH_SCHEMA + SEG_SCHEMA + ASSOC_SCHEMA + TERMINAL_SCHEMA + CIRCLE_SCHEMA + EVIDENCE_SCHEMA + INDEPENDENT_SCHEMA + PATHMATCH_SCHEMA + FUSE_AUDIT_SCHEMA + LOCAL_OCR_SCHEMA + DIAG_SCHEMA + CONT_SCHEMA + TARGET_SCHEMA + VISUAL_SCHEMA + COMPONENT_SCHEMA + TRACE_SCHEMA + ENHANCED_SCHEMA + CORRECTED_SCHEMA + BRANCH_SCHEMA + ACCURACY_SCHEMA + MVP_SCHEMA + VEHICLE_SCHEMA + DIAGNOSE_SCHEMA + UNIVERSAL_SCHEMA + PDF_SCHEMA + VEHICLE_LIBRARY_SCHEMA)
  for id,title,file,w,h in SEEDS:
   db.execute('INSERT OR IGNORE INTO viewer_diagrams(id,title,image_file,width,height,source_url,vehicle) VALUES(?,?,?,?,?,?,?)',(id,title,file,w,h,'https://charm.li/','Suzuki SX4 2007 2WD L4-2.0L (source context, unverified)'))
  db.commit()
@@ -80,6 +84,16 @@ def run(port,dbpath):
    if p=='/api/pdf-sources':return self.send(200,pdf_sources(dbpath))
    if p=='/api/pdf-candidates':return self.send(200,pdf_candidates())
    if p=='/api/pdf-library':return self.send(200,pdf_documents(dbpath))
+   if p=='/api/electrical-systems':return self.send(200,VEHICLE_SYSTEMS)
+   if p=='/api/vehicle-documents':
+    q=parse_qs(url.query)
+    selection={k:q.get(k,[''])[0] for k in ('brand_id','model_id','year','variant','powertrain')}
+    try:return self.send(200,matching_vehicle_documents(dbpath,selection))
+    except ValueError as exc:return self.send(400,{'error':str(exc)})
+   if p=='/api/pdf-page-info':
+    pdf_id=parse_qs(url.query).get('pdf_id',[''])[0]
+    try:return self.send(200,vehicle_pdf_info(dbpath,ROOT/'output'/'pdf_library',pdf_id))
+    except (ValueError,RuntimeError) as exc:return self.send(400,{'error':str(exc)})
    if p=='/api/vehicle-catalog':
     return self.send(200,vehicle_catalog(dbpath))
    if p=='/api/vehicle-profiles':
@@ -220,6 +234,20 @@ def run(port,dbpath):
   def do_POST(self):
    try:
     p=urlparse(self.path).path;v=self.body()
+    if p=='/api/pdf-vehicle-attach':
+     return self.send(201,attach_vehicle_pdf(dbpath,str(v.get('pdf_id','')),
+        str(v.get('profile_id','')),str(v.get('system','other')),
+        v.get('confirmed_applicability') is True))
+    if p=='/api/pdf-page-import':
+     return self.send(201,import_vehicle_pdf_page(dbpath,
+        ROOT/'output'/'pdf_library',ROOT/'sample_assets',
+        str(v.get('pdf_id','')),str(v.get('profile_id','')),
+        v.get('page_number'),str(v.get('system','other')),
+        v.get('confirmed_applicability') is True))
+    if p=='/api/diagram-classify':
+     return self.send(200,classify_vehicle_diagram(dbpath,
+        str(v.get('diagram_id','')),str(v.get('profile_id','')),
+        str(v.get('system','other')),v.get('confirmed_applicability') is True))
     if p=='/api/vehicle-model-add':
      return self.send(201,add_vehicle_model(dbpath,v))
     if p=='/api/vehicle-profile':
@@ -355,7 +383,7 @@ def run(port,dbpath):
     try:cursor=db.execute(f'DELETE FROM {table} WHERE id=?',(p[3],));db.commit()
     except sqlite3.IntegrityError:return self.send(409,{'error':'Item is referenced by terminals or circuit links; delete references first'})
    return self.send(200,{'deleted':cursor.rowcount})
- print(f'AutoWiring v0.4.1 PDF Source Library at http://127.0.0.1:{port} | DB: {dbpath}')
+ print(f'AutoWiring v0.4.2 Vehicle-First PDF Viewer at http://127.0.0.1:{port} | DB: {dbpath}')
  ThreadingHTTPServer(('127.0.0.1',port),Handler).serve_forever()
 
 if __name__=='__main__':
