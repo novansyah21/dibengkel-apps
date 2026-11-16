@@ -1282,8 +1282,8 @@ async function refreshPdfLibrary(){
  const status=$('pdfLibraryStatus');
  status.textContent='Membaca daftar referensi dan PDF lokal...';
  try{
-   const [sources,docs]=await Promise.all([
-      api('/api/pdf-sources'),api('/api/pdf-library')]);
+   const [sources,docs,candidates]=await Promise.all([
+      api('/api/pdf-sources'),api('/api/pdf-library'),api('/api/pdf-candidates')]);
    const src=$('pdfSourceList');src.replaceChildren();
    for(const item of sources){
       const row=document.createElement('p');row.className='muted';
@@ -1294,6 +1294,17 @@ async function refreshPdfLibrary(){
       info.textContent=' • '+item.source_kind+
         ' • izin: '+item.license_status+' • '+item.notes;
       row.append(a,info);src.append(row);
+   }
+   const leads=$('pdfCandidateList');leads.replaceChildren();
+   for(const item of candidates){
+     const row=document.createElement('p');row.className='muted';
+     const a=document.createElement('a');
+     a.href=item.url;a.target='_blank';a.rel='noopener noreferrer';
+     a.textContent=item.title;
+     const meta=document.createElement('span');
+     meta.textContent=' • '+item.vehicle+' • '+item.format+
+       ' • arsip: '+item.archive_status+' • hak: '+item.rights;
+     row.append(a,meta);leads.append(row);
    }
    const lib=$('pdfDocumentList');lib.replaceChildren();
    if(!docs.length){
@@ -1313,7 +1324,7 @@ async function refreshPdfLibrary(){
       row.append(a,meta);lib.append(row);
    }
    status.textContent=sources.length+' sumber terdaftar, '+
-      docs.length+' PDF lokal. Tidak ada proses scraping otomatis.';
+      candidates.length+' kandidat dokumen, '+docs.length+' PDF lokal. Tidak ada proses scraping otomatis.';
  }catch(error){
    status.textContent='Gagal membaca PDF library: '+error.message;
  }
