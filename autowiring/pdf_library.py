@@ -19,7 +19,7 @@ from urllib.robotparser import RobotFileParser
 import uuid
 
 USER_AGENT="AutoWiringSourceLibrary/0.4.1 (+manual authorized archival; no bypass)"
-MAX_PDF=30*1024*1024
+MAX_PDF=100*1024*1024
 MAX_DISCOVERY_PAGES=3
 MAX_PDF_LINKS=40
 SCHEMA="""
@@ -180,7 +180,7 @@ def import_pdf(dbpath,storage,url,title,vehicle,license_basis,source_id="manual"
             chunk=r.read(min(256*1024,MAX_PDF+1-length))
             if not chunk:break
             length+=len(chunk)
-            if length>MAX_PDF:raise ValueError("PDF exceeds 30 MB")
+            if length>MAX_PDF:raise ValueError("PDF exceeds 100 MB")
             chunks.append(chunk)
     raw=b"".join(chunks)
     if not raw.startswith(b"%PDF-"):
