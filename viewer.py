@@ -29,6 +29,7 @@ from autowiring.branch_tracing import SCHEMA as BRANCH_SCHEMA,build as build_bra
 from autowiring.terminal_accuracy import SCHEMA as ACCURACY_SCHEMA,build as build_terminal_accuracy,latest as latest_terminal_accuracy,review as review_terminal_accuracy
 from autowiring.mvp_review import SCHEMA as MVP_SCHEMA,assemble as mvp_report,snapshot as mvp_snapshot,snapshots as mvp_snapshots
 from autowiring.diagram_upload import upload as upload_diagram
+from autowiring.source_candidates import candidates as pdf_candidates
 from autowiring.pdf_library import (SCHEMA as PDF_SCHEMA,init as init_pdf_library,sources as pdf_sources,documents as pdf_documents)
 from autowiring.vehicle_catalog import (SCHEMA as VEHICLE_SCHEMA,seed as seed_vehicles,catalog as vehicle_catalog,
     add_model as add_vehicle_model,save_profile as save_vehicle_profile,
@@ -77,6 +78,7 @@ def run(port,dbpath):
   def do_GET(self):
    url=urlparse(self.path);p=url.path
    if p=='/api/pdf-sources':return self.send(200,pdf_sources(dbpath))
+   if p=='/api/pdf-candidates':return self.send(200,pdf_candidates())
    if p=='/api/pdf-library':return self.send(200,pdf_documents(dbpath))
    if p=='/api/vehicle-catalog':
     return self.send(200,vehicle_catalog(dbpath))
