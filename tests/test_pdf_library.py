@@ -9,6 +9,7 @@ from unittest.mock import patch,MagicMock
 
 from viewer import setup
 from autowiring import pdf_library as lib
+from autowiring.source_candidates import candidates
 
 class PdfLibraryTests(unittest.TestCase):
     def setUp(self):
@@ -17,6 +18,13 @@ class PdfLibraryTests(unittest.TestCase):
         self.store=Path(self.tmp.name)/"pdf"
         with sqlite3.connect(self.db) as db:setup(db)
     def tearDown(self):self.tmp.cleanup()
+    def test_candidate_leads_are_not_mistaken_for_archived_pdfs(self):
+        items=candidates()
+        self.assertGreaterEqual(len(items),8)
+        self.assertEqual(len({item["id"] for item in items}),len(items))
+        self.assertTrue(all(item["archive_status"]!="archived" for item in items))
+        self.assertEqual(lib.documents(self.db),[])
+        self.assertEqual(next(x for x in items if x["id"]=="audi_a6_steering_tsb")["archive_status"],"link_only_no_archive")
     def test_prior_sources_catalog_without_any_download(self):
         entries=lib.sources(self.db)
         self.assertEqual({s["id"] for s in entries},
