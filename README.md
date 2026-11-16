@@ -1,6 +1,67 @@
-# AutoWiring v0.4.0 — Multi-Vehicle Catalog & Electrical Triage (Beta)
+# AutoWiring v0.4.1 — Multi-Vehicle & PDF Source Library
 
 **Status produk:** viewer dan manual wiring-map untuk diagram mobil apa pun, OCR/CV universal sebagai **kandidat visual**, katalog kendaraan, dan diagnosis awal kelistrikan 12V **berdasarkan gejala dan bukti pengukuran**. Aplikasi belum dapat membuktikan netlist listrik seluruh kendaraan atau menetapkan penyebab kerusakan otomatis dari gambar saja.
+
+## v0.4.1 — PDF Source Library (rights-aware)
+
+The 📚 Wiring PDF Source Library UI lists previously discussed references and locally archived PDFs:
+
+- Operation CHARM: https://charm.li/ (HTML/images; not assumed to provide PDFs)
+- BMW ETM Archive: https://shark.armchair.mb.ca/~dave/BMW/ (some historical PDF links)
+- BMW WDS: https://wds.psjr.org/en/ (interactive diagram site)
+- BMWTeka: https://bmwteka.com/en (service manual catalog)
+- CarManualsOnline: https://www.carmanualsonline.info/ (online manual site)
+
+These sources are **not automatically scraped or downloaded**. Their license status is unknown. No paywall, login, anti-bot or robots.txt bypass. If robots.txt cannot be checked or denies access, discovery/download fails closed. The app will not redistribute copyrighted manuals.
+
+List sources and local PDFs:
+
+~~~powershell
+py pdf_sources.py sources
+py pdf_sources.py list
+~~~
+
+Discover direct PDF links on one public HTML page (dry run, no download):
+
+~~~powershell
+py pdf_sources.py discover --url "https://example.org/public-index/"
+~~~
+
+Add a locally owned/authorized PDF:
+
+~~~powershell
+py pdf_sources.py add-local --file "C:\manuals\wiring.pdf" --title "Wiring diagram" --vehicle "Suzuki Swift 2007" --rights "licensed personal reference"
+~~~
+
+Download **one** direct HTTPS PDF only when authorized and robots.txt permits:
+
+~~~powershell
+py pdf_sources.py import-url --url "https://example.org/permitted-manual.pdf" --title "Wiring diagram" --vehicle "Suzuki Swift 2007" --rights "express permission from rights holder" --confirm-rights
+~~~
+
+Example.org URLs above are placeholders, not verified authorized sources.
+
+Files are SHA256-deduplicated into output/pdf_library/ with metadata in SQLite. The UI lists only registered files and serves them from that folder. This feature does not yet convert PDF pages into diagram images or verified circuit graphs.
+
+### Collection sprint 1 (2026-11-16): candidate manifest
+
+The application now lists nine researched leads under **Kandidat dokumen wiring** and in the CLI:
+
+~~~powershell
+py pdf_sources.py candidates
+~~~
+
+These are **research links, not nine downloaded files**. A link can be a direct PDF, HTML manual viewer, paid PDF, or historical unverified reference. Each record includes format, vehicle, subject, provenance, and rights/archiving restrictions.
+
+The first Suzuki Swift 2007 lead is the publisher's **public PDF preview**, not the complete 388-page paid book. The CarManualsOnline 1496-page workshop manual is an HTML viewer, not a verified direct PDF link. The historical BMW ETM archive was not reachable in this research environment. NHTSA-hosted OEM bulletins may be publicly readable but still copyrighted; the Audi TSB expressly forbids storage in a retrieval system without prior permission and is flagged **link_only_no_archive**.
+
+To collect PDF files already owned and licensed, use the batch local importer (maximum 100 PDFs per invocation):
+
+~~~powershell
+py pdf_sources.py import-folder --folder "D:\\Manuals\\AutoWiring" --vehicle "Unclassified - review required" --rights "authorized local reference copies" --confirm-rights
+~~~
+
+Add `--recursive` to scan subfolders. Inspect the printed per-file results. Files remain in `output/pdf_library/`, never in Git commits. Do not use this batch command for files you do not have permission to store. Confirm exact vehicle year/market/engine before assigning a PDF to a vehicle profile.
 
 ## Instalasi / upgrade Windows
 
